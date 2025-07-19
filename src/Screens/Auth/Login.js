@@ -7,7 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 
-export default function Login() {
+export default function Login({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -23,8 +23,7 @@ export default function Login() {
         onChangeText={setEmail}
       />
 
-      <Text style={styles.label}>비밀번호
-      </Text>
+      <Text style={styles.label}>비밀번호</Text>
       <TextInput
         placeholder="비밀번호"
         style={styles.input}
@@ -62,7 +61,10 @@ export default function Login() {
       </TouchableOpacity>
 
       <Text style={styles.bottomText}>
-        계정이 없으신가요? <Text style={styles.linkText}>가입하기</Text>
+        계정이 없으신가요?{' '}
+        <Text style={styles.linkText} onPress={() => navigation.navigate('SignUp')}>
+          가입하기
+        </Text>
       </Text>
     </View>
   );
