@@ -1,1 +1,0 @@
-# GeoMemo-Frontend
