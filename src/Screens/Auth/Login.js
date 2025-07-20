@@ -6,10 +6,12 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
-export default function Login({ navigation }) {
+export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const navigation = useNavigation();
 
   return (
     <View style={styles.container}>
@@ -43,26 +45,20 @@ export default function Login({ navigation }) {
       </View>
 
       <TouchableOpacity style={styles.socialButton}>
-        <Text style={styles.socialText}>
-          <Text style={{ fontWeight: 'bold' }}>Google</Text>로 로그인
-        </Text>
+        <Text style={[styles.socialText, { fontWeight: 'bold' }]}>Google로 로그인</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.socialButton}>
-        <Text style={styles.socialText}>
-          <Text style={{ fontWeight: 'bold' }}>Naver</Text>로 로그인
-        </Text>ㅗ
+        <Text style={[styles.socialText, { fontWeight: 'bold' }]}>Naver로 로그인</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.socialButton}>
-        <Text style={styles.socialText}>
-          <Text style={{ fontWeight: 'bold' }}>Kakao</Text>로 로그인
-        </Text>
+        <Text style={[styles.socialText, { fontWeight: 'bold' }]}>Kakao로 로그인</Text>
       </TouchableOpacity>
 
       <Text style={styles.bottomText}>
         계정이 없으신가요?{' '}
-        <Text style={styles.linkText} onPress={() => navigation.navigate('SignUp')}>
+        <Text style={styles.linkText} onPress={() => navigation.navigate('Sign_Up')}>
           가입하기
         </Text>
       </Text>
