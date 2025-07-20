@@ -44,19 +44,19 @@ export default function Login({ navigation }) {
 
       <TouchableOpacity style={styles.socialButton}>
         <Text style={styles.socialText}>
-          <Text style={{ fontWeight: 'bold' }}>Gmail</Text> 계정으로 계속하기
+          <Text style={{ fontWeight: 'bold' }}>Google</Text>로 로그인
         </Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.socialButton}>
         <Text style={styles.socialText}>
-          <Text style={{ fontWeight: 'bold' }}>Naver</Text> 계정으로 계속하기
-        </Text>
+          <Text style={{ fontWeight: 'bold' }}>Naver</Text>로 로그인
+        </Text>ㅗ
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.socialButton}>
         <Text style={styles.socialText}>
-          <Text style={{ fontWeight: 'bold' }}>Kakao Talk</Text> 계정으로 계속하기
+          <Text style={{ fontWeight: 'bold' }}>Kakao</Text>로 로그인
         </Text>
       </TouchableOpacity>
 
@@ -132,8 +132,8 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   bottomText: {
-    marginTop: 30,
-    textAlign: 'center',
+    marginTop: 50,
+    textAlign: 'left',
     color: '#333',
   },
   linkText: {
