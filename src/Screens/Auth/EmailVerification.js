@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
-export default function EmailVerification({ navigation }) {
+export default function EmailVerification() {
+  const navigation = useNavigation();
   const [code, setCode] = useState('');
 
   return (
@@ -22,7 +24,7 @@ export default function EmailVerification({ navigation }) {
         onChangeText={setCode}
       />
 
-      <TouchableOpacity style={styles.button}>
+      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('UserInfoInput')}>
         <Text style={styles.buttonText}>인증하기</Text>
       </TouchableOpacity>
     </View>
@@ -59,7 +61,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 380,
+    marginTop: 410,
   },
   buttonText: {
     color: '#fff',

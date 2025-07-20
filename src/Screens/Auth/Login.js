@@ -58,7 +58,7 @@ export default function Login() {
 
       <Text style={styles.bottomText}>
         계정이 없으신가요?{' '}
-        <Text style={styles.linkText} onPress={() => navigation.navigate('Sign_Up')}>
+        <Text style={styles.linkText} onPress={() => navigation.navigate('SignUp')}>
           가입하기
         </Text>
       </Text>
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   loginButton: {
-    backgroundColor: '#333',
+    backgroundColor: '#111',
     padding: 14,
     borderRadius: 8,
     alignItems: 'center',

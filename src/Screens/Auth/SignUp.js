@@ -26,7 +26,7 @@ export default function SignUp() {
       <Text style={styles.label}>전화번호</Text>
       <TextInput style={styles.input} placeholder="'-' 없이 입력하세요." keyboardType="phone-pad" />
 
-      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Email_Verification')}>
+      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('EmailVerification')}>
         <Text style={styles.buttonText}>가입하기</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -62,14 +62,13 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 32,
-    backgroundColor: '#222',
+    backgroundColor: '#111',
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
   },
   buttonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
 });
