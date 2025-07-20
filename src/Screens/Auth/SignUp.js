@@ -1,7 +1,9 @@
 import React from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 export default function SignUp() {
+  const navigation = useNavigation();
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>회원가입</Text>
@@ -24,7 +26,7 @@ export default function SignUp() {
       <Text style={styles.label}>전화번호</Text>
       <TextInput style={styles.input} placeholder="'-' 없이 입력하세요." keyboardType="phone-pad" />
 
-      <TouchableOpacity style={styles.button}>
+      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Email_Verification')}>
         <Text style={styles.buttonText}>가입하기</Text>
       </TouchableOpacity>
     </ScrollView>
