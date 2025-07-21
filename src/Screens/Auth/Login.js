@@ -6,10 +6,12 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const navigation = useNavigation();
 
   return (
     <View style={styles.container}>
@@ -23,8 +25,7 @@ export default function Login() {
         onChangeText={setEmail}
       />
 
-      <Text style={styles.label}>비밀번호
-      </Text>
+      <Text style={styles.label}>비밀번호</Text>
       <TextInput
         placeholder="비밀번호"
         style={styles.input}
@@ -43,26 +44,24 @@ export default function Login() {
         <View style={styles.line} />
       </View>
 
-      <TouchableOpacity style={styles.socialButton}>
-        <Text style={styles.socialText}>
-          <Text style={{ fontWeight: 'bold' }}>Gmail</Text> 계정으로 계속하기
-        </Text>
+      <TouchableOpacity style={[styles.socialButton, styles.googleButton]}>
+        <Text style={styles.socialText}>Google로 로그인</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.socialButton}>
-        <Text style={styles.socialText}>
-          <Text style={{ fontWeight: 'bold' }}>Naver</Text> 계정으로 계속하기
-        </Text>
+      <TouchableOpacity style={[styles.socialButton, styles.naverButton]}>
+        <Text style={styles.socialText}>Naver로 로그인</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.socialButton}>
-        <Text style={styles.socialText}>
-          <Text style={{ fontWeight: 'bold' }}>Kakao Talk</Text> 계정으로 계속하기
-        </Text>
+      <TouchableOpacity style={[styles.socialButton, styles.kakaoButton]}>
+        <Text style={styles.socialText}>Kakao로 로그인</Text>
       </TouchableOpacity>
+
 
       <Text style={styles.bottomText}>
-        계정이 없으신가요? <Text style={styles.linkText}>가입하기</Text>
+        계정이 없으신가요?{' '}
+        <Text style={styles.linkText} onPress={() => navigation.navigate('SignUp')}>
+          가입하기
+        </Text>
       </Text>
     </View>
   );
@@ -95,7 +94,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   loginButton: {
-    backgroundColor: '#333',
+    backgroundColor: '#111',
     padding: 14,
     borderRadius: 8,
     alignItems: 'center',
@@ -120,7 +119,6 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   socialButton: {
-    backgroundColor: '#f2f2f2',
     padding: 12,
     borderRadius: 6,
     marginBottom: 10,
@@ -128,14 +126,24 @@ const styles = StyleSheet.create({
   },
   socialText: {
     color: '#333',
+    fontWeight: 'bold',
   },
   bottomText: {
-    marginTop: 30,
-    textAlign: 'center',
+    marginTop: 50,
+    textAlign: 'left',
     color: '#333',
   },
   linkText: {
     color: '#3366ff',
     fontWeight: 'bold',
+  },
+    googleButton: {
+    backgroundColor: '#e2e1e1ff',
+  },
+  naverButton: {
+    backgroundColor: '#03C75A',
+  },
+  kakaoButton: {
+    backgroundColor: '#FEE500',
   },
 });
