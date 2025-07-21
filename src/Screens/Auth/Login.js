@@ -44,17 +44,18 @@ export default function Login() {
         <View style={styles.line} />
       </View>
 
-      <TouchableOpacity style={styles.socialButton}>
-        <Text style={[styles.socialText, { fontWeight: 'bold' }]}>Google로 로그인</Text>
+      <TouchableOpacity style={[styles.socialButton, styles.googleButton]}>
+        <Text style={styles.socialText}>Google로 로그인</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.socialButton}>
-        <Text style={[styles.socialText, { fontWeight: 'bold' }]}>Naver로 로그인</Text>
+      <TouchableOpacity style={[styles.socialButton, styles.naverButton]}>
+        <Text style={styles.socialText}>Naver로 로그인</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.socialButton}>
-        <Text style={[styles.socialText, { fontWeight: 'bold' }]}>Kakao로 로그인</Text>
+      <TouchableOpacity style={[styles.socialButton, styles.kakaoButton]}>
+        <Text style={styles.socialText}>Kakao로 로그인</Text>
       </TouchableOpacity>
+
 
       <Text style={styles.bottomText}>
         계정이 없으신가요?{' '}
@@ -118,7 +119,6 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   socialButton: {
-    backgroundColor: '#f2f2f2',
     padding: 12,
     borderRadius: 6,
     marginBottom: 10,
@@ -126,6 +126,7 @@ const styles = StyleSheet.create({
   },
   socialText: {
     color: '#333',
+    fontWeight: 'bold',
   },
   bottomText: {
     marginTop: 50,
@@ -135,5 +136,14 @@ const styles = StyleSheet.create({
   linkText: {
     color: '#3366ff',
     fontWeight: 'bold',
+  },
+    googleButton: {
+    backgroundColor: '#e2e1e1ff',
+  },
+  naverButton: {
+    backgroundColor: '#03C75A',
+  },
+  kakaoButton: {
+    backgroundColor: '#FEE500',
   },
 });
