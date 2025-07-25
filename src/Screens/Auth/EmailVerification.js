@@ -24,8 +24,8 @@ export default function EmailVerification() {
         onChangeText={setCode}
       />
 
-      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('UserInfoInput')}>
-        <Text style={styles.buttonText}>인증하기</Text>
+      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('MemoMap')}>
+        <Text style={styles.buttonText}>가입완료</Text>
       </TouchableOpacity>
     </View>
   );

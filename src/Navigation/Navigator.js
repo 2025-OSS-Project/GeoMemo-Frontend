@@ -4,6 +4,7 @@ import Login from '../Screens/Auth/Login';
 import SignUp from '../Screens/Auth/SignUp';
 import EmailVerification from '../Screens/Auth/EmailVerification';
 import UserInfoInput from '../Screens/Auth/UserInfoInput'
+import MemoMap from '../Screens/Main/Home';
 
 const Stack = createNativeStackNavigator();
 
@@ -14,6 +15,7 @@ export default function Navigator() {
       <Stack.Screen name="SignUp" component={SignUp} />
       <Stack.Screen name="EmailVerification" component={EmailVerification} />
       <Stack.Screen name="UserInfoInput" component={UserInfoInput} />
+      <Stack.Screen name="MemoMap" component={MemoMap} />
     </Stack.Navigator>
   );
 }
