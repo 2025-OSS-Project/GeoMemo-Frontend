@@ -29,7 +29,7 @@ export default function UserInfo( ) {
         onChangeText={setPhone}
       />
 
-      <TouchableOpacity style={styles.button}>
+      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('MemoMap')}>
         <Text style={styles.buttonText}>가입완료</Text>
       </TouchableOpacity>
     </View>

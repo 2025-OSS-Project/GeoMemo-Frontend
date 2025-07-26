@@ -34,8 +34,8 @@ export default function Login() {
         secureTextEntry
       />
 
-      <TouchableOpacity style={styles.loginButton}>
-        <Text style={styles.loginButtonText}>로그인</Text>
+      <TouchableOpacity style={styles.loginButton} onPress={() => navigation.navigate('MemoMap')}>
+        <Text style={styles.loginButtonText} > 로그인</Text>
       </TouchableOpacity>
 
       <View style={styles.dividerContainer}>
@@ -44,15 +44,15 @@ export default function Login() {
         <View style={styles.line} />
       </View>
 
-      <TouchableOpacity style={[styles.socialButton, styles.googleButton]}>
+      <TouchableOpacity style={[styles.socialButton, styles.googleButton]} onPress={() => navigation.navigate('UserInfoInput')}>
         <Text style={styles.socialText}>Google로 로그인</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.socialButton, styles.naverButton]}>
+      <TouchableOpacity style={[styles.socialButton, styles.naverButton]} onPress={() => navigation.navigate('UserInfoInput')}>
         <Text style={styles.socialText}>Naver로 로그인</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.socialButton, styles.kakaoButton]}>
+      <TouchableOpacity style={[styles.socialButton, styles.kakaoButton]} onPress={() => navigation.navigate('UserInfoInput')}>
         <Text style={styles.socialText}>Kakao로 로그인</Text>
       </TouchableOpacity>
 
