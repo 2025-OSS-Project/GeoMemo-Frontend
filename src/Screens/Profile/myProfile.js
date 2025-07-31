@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
   photoCircle: {
     width: 100,
     height: 100,
-    borderRadius: 40,
+    borderRadius: 50,
     backgroundColor: '#333',
     justifyContent: 'center',
     alignItems: 'center',

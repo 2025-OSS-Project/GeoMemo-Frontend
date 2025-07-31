@@ -28,6 +28,7 @@ export default function Navigator() {
       <Stack.Screen name="ThisMemoView" component={ThisMemoView} />
       <Stack.Screen name="AllMemoView" component={AllMemoView} />
       <Stack.Screen name="MyProfile" component={MyProfile} options={{ headerShown: false }}/>
+      <Stack.Screen name="OtherProfile" component={OtherProfile} options={{ headerShown: false }}/>
     </Stack.Navigator>
     
   );

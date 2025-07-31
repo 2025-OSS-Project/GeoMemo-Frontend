@@ -1,14 +1,20 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 export default function ScrapMemo() {
+  const navigation = useNavigation();
+
   const dummyData = [1, 2, 3, 4];
 
   const renderItem = ({ item }) => (
     <View style={styles.memoRow}>
-      <View style={styles.circle}>
+      <TouchableOpacity
+        style={styles.circle}
+        onPress={() => navigation.navigate('OtherProfile')}
+      >
         <Text style={styles.circleText}>{item}</Text>
-      </View>
+      </TouchableOpacity>
       <View style={styles.memoBox} />
     </View>
   );
@@ -25,31 +31,33 @@ export default function ScrapMemo() {
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 10,
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    backgroundColor: '#fff',
   },
   memoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 8,
-    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   circle: {
     width: 50,
     height: 50,
-    borderRadius: 16,
+    borderRadius: 25,
     backgroundColor: '#333',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 15,
   },
   circleText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   memoBox: {
     flex: 1,
     height: 50,
     backgroundColor: '#eee',
-    borderRadius: 8,
+    borderRadius: 10,
   },
 });
