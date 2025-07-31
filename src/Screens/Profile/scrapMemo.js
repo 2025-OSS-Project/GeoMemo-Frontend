@@ -15,7 +15,11 @@ export default function ScrapMemo() {
       >
         <Text style={styles.circleText}>{item}</Text>
       </TouchableOpacity>
-      <View style={styles.memoBox} />
+
+      <TouchableOpacity 
+      style={styles.memoBox} 
+      onPress={() => navigation.navigate('MemoView')}>
+      </TouchableOpacity>
     </View>
   );
 
