@@ -196,7 +196,7 @@ export default function Home() {
             <Ionicons name={routeVisible ? "chevron-back" : "chevron-forward"} size={24} color="black" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.myMemoManage}>
+          <TouchableOpacity style={styles.myMemoManage} onPress={() => navigation.navigate('MemoManager')}>
             <FontAwesome name="navicon" size={24} color="black" />
           </TouchableOpacity>
 
@@ -228,7 +228,7 @@ export default function Home() {
 const styles = StyleSheet.create({
   topBar: {
     position: 'absolute',
-    top: 40,
+    top: 70,
     alignSelf: 'center',
     backgroundColor: 'white',
     paddingHorizontal: 12,
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   },
   myMemoManage: {
     position: 'absolute',
-    top: 120,
+    top: 140,
     right: 20,
     backgroundColor: '#fff',
     borderRadius: 25,
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   },
   compassBtn: {
     position: 'absolute',
-    top: 180,
+    top: 200,
     right: 20,
     backgroundColor: '#fff',
     borderRadius: 25,
