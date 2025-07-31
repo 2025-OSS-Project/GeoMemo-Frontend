@@ -6,8 +6,8 @@ export default function ThisMemo() {
     const navigation = useNavigation();
 
     const memos = [
-        { id: 1, time: '10:00', title: '카페에서 메모', content: '라떼 맛있음', isPublic: true },
-        { id: 2, time: '12:30', title: '공원', content: '날씨 맑음', isPublic: false },
+        { id: 1, time: '2025/04/04 10:00', title: '카페에서 메모', content: '라떼 맛있음', isPublic: true },
+        { id: 2, time: '2025/04/14 12:30', title: '공원', content: '날씨 맑음', isPublic: false },
     ];
 
     return (

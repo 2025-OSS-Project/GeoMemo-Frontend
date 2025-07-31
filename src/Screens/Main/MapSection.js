@@ -45,7 +45,6 @@ export default function MapSection({
           if (filter === 'all') return true;
           if (filter === 'me') return memo.userId === myUser?.id;
           if (filter === 'following') return followingIds.includes(memo.userId);
-          if (filter === 'mine') return memo.userId === myUser?.id;
           return true;
         })
         .map(memo => (

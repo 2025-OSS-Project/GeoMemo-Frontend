@@ -9,6 +9,9 @@ import MemoManager from '../Screens/MemoManage/MemoManager'
 import AddMemo from '../Screens/MemoManage/addMemo'
 import ThisMemoView from '../Screens/MemoManage/thisMemoView' 
 import AllMemoView from '../Screens/MemoManage/allMemoView' 
+import MyProfile from '../Screens/Profile/myProfile'
+import OtherProfile from '../Screens/Profile/otherProfile'
+import MemoView from '../Screens/Profile/memoView'
 
 const Stack = createNativeStackNavigator();
 
@@ -24,6 +27,7 @@ export default function Navigator() {
       <Stack.Screen name="AddMemo" component={AddMemo} />
       <Stack.Screen name="ThisMemoView" component={ThisMemoView} />
       <Stack.Screen name="AllMemoView" component={AllMemoView} />
+      <Stack.Screen name="MyProfile" component={MyProfile} options={{ headerShown: false }}/>
     </Stack.Navigator>
     
   );

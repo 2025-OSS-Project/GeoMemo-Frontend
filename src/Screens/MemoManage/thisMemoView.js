@@ -16,7 +16,7 @@ export default function ThisMemoView() {
     <View style={styles.container}>
 
       <View style={styles.inputRow}>
-        <Text style={styles.timeBox}>시간</Text>
+        <Text style={styles.timeBox}>{memo.time}</Text>
         <TextInput
           value={title}
           onChangeText={setTitle}

@@ -151,8 +151,8 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   profileCircle: {
-    width: 36,
-    height: 36,
+    width: 50,
+    height: 50,
     borderRadius: 18,
     marginRight: 10,
     backgroundColor: '#ccc',

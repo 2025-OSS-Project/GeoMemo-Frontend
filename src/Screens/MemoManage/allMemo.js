@@ -6,9 +6,9 @@ export default function AllMemo() {
   const navigation = useNavigation();
 
   const allMemos = [
-    { id: 1, place: '서울역', time: '09:00', title: '출근길', content: '지하철 너무 붐벼', isPublic: true },
-    { id: 2, place: '카페', time: '10:20', title: '라떼 한 잔', content: '오늘도 라떼 맛있다', isPublic: false },
-    { id: 3, place: '학교', time: '11:00', title: '강의 중 메모', content: '교수님 수업 졸림', isPublic: true },
+    { id: 1, place: '서울역', time: '2025/07/15 09:00', title: '출근길', content: '지하철 너무 붐벼', isPublic: true },
+    { id: 2, place: '카페', time: '2025/04/15 10:20', title: '라떼 한 잔', content: '오늘도 라떼 맛있다', isPublic: false },
+    { id: 3, place: '학교', time: '2025/12/15 11:00', title: '강의 중 메모', content: '교수님 수업 졸림', isPublic: true },
   ];
 
   return (

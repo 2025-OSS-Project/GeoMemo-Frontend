@@ -2,6 +2,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Animated, Image } from 'react-native';
 import { styles } from './styles';
+import { useNavigation } from '@react-navigation/native';
 
 const SLIDE_HEIGHT = 400
 
@@ -23,6 +24,7 @@ export default function SlidePanel({
     title: '테스트 메모',
     content: '이것은 MemoModal 디자인 테스트용 예시입니다.',
   };
+  const navigation = useNavigation();
 
   return (
     <Animated.View style={[styles.slideUpPanel, { top: slideAnim }]} {...panResponder.panHandlers}>
@@ -30,7 +32,7 @@ export default function SlidePanel({
 
       {/* 🔹 필터 버튼 영역 + 모달 테스트 버튼 */}
       <View style={[styles.filterRow, { alignItems: 'center' }]}>
-        <TouchableOpacity onPress={() => setFilter('me')}>
+        <TouchableOpacity onPress={() => navigation.navigate('MyProfile')}>
           <Image source={{ uri: myProfileImage }} style={styles.profileCircle} />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setFilter('all')}>
@@ -39,7 +41,7 @@ export default function SlidePanel({
         <TouchableOpacity onPress={() => setFilter('following')}>
           <Text style={styles.filterBtn}>팔로잉</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setFilter('mine')}>
+        <TouchableOpacity onPress={() => setFilter('me')}>
           <Text style={styles.filterBtn}>나</Text>
         </TouchableOpacity>
         {/* 모달 테스트용 작은 버튼 */}
@@ -58,7 +60,7 @@ export default function SlidePanel({
             if (filter === 'all') return true;
             if (filter === 'me') return memo.userId === myUser?.id;
             if (filter === 'following') return followingIds.includes(memo.userId);
-            if (filter === 'mine') return memo.userId === myUser?.id;
+            if (filter === 'me') return memo.userId === myUser?.id;
             return true;
           });
         if (filteredMemos.length === 0) {
