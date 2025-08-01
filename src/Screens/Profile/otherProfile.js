@@ -3,8 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-import OtherMemoList from './otherMemoList';
-import Insight from './insight';
+import OtherMemoList from './OtherMemoList';
+import Insight from './Insight';
 
 export default function OtherProfile() {
   const navigation = useNavigation();

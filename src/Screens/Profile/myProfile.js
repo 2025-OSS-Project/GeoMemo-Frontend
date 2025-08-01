@@ -3,8 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons, FontAwesome, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-import ScrapMemo from './scrapMemo';
-import Insight from './insight';
+import ScrapMemo from './ScrapMemo';
+import Insight from './Insight';
 
 export default function MyProfile() {
   const navigation = useNavigation();
@@ -17,7 +17,7 @@ export default function MyProfile() {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={24} color="black" />
         </TouchableOpacity>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('SettingsHome')}>
           <Ionicons name="settings-outline" size={24} color="black" />
         </TouchableOpacity>
       </View>

@@ -6,12 +6,16 @@ import EmailVerification from '../Screens/Auth/EmailVerification';
 import UserInfoInput from '../Screens/Auth/UserInfoInput'
 import MemoMap from '../Screens/Main/Home';
 import MemoManager from '../Screens/MemoManage/MemoManager'
-import AddMemo from '../Screens/MemoManage/addMemo'
-import ThisMemoView from '../Screens/MemoManage/thisMemoView' 
-import AllMemoView from '../Screens/MemoManage/allMemoView' 
-import MyProfile from '../Screens/Profile/myProfile'
-import OtherProfile from '../Screens/Profile/otherProfile'
-import MemoView from '../Screens/Profile/memoView'
+import AddMemo from '../Screens/MemoManage/AddMemo'
+import ThisMemoView from '../Screens/MemoManage/ThisMemoView' 
+import AllMemoView from '../Screens/MemoManage/AllMemoView' 
+import MyProfile from '../Screens/Profile/MyProfile'
+import OtherProfile from '../Screens/Profile/OtherProfile'
+import MemoView from '../Screens/Profile/MemoView'
+import SettingsHome from '../Screens/Setting/SettingsHome'
+import EditProfile from '../Screens/Setting/EditProfile'
+import ChangeNickname from '../Screens/Setting/ChangeNickname'
+import ChangePassword from '../Screens/Setting/ChangePassword'
 
 const Stack = createNativeStackNavigator();
 
@@ -30,6 +34,10 @@ export default function Navigator() {
       <Stack.Screen name="MyProfile" component={MyProfile} options={{ headerShown: false }}/>
       <Stack.Screen name="OtherProfile" component={OtherProfile} options={{ headerShown: false }}/>
       <Stack.Screen name="MemoView" component={MemoView} options={{ headerShown: false }}/>
+      <Stack.Screen name="SettingsHome" component={SettingsHome}/>
+      <Stack.Screen name="EditProfile" component={EditProfile}/>
+      <Stack.Screen name="ChangeNickname" component={ChangeNickname}/>
+      <Stack.Screen name="ChangePassword" component={ChangePassword}/>
     </Stack.Navigator>
     
   );

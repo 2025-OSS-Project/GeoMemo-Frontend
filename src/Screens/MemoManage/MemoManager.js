@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import ThisMemo from './thisMemo';
-import AllMemo from './allMemo';
+import ThisMemo from './ThisMemo';
+import AllMemo from './AllMemo';
 
 export default function MemoManager() {
   const [activeTab, setActiveTab] = useState('current');
