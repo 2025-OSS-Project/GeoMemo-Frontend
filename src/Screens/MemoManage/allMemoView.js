@@ -15,7 +15,7 @@ export default function AllMemoView() {
 
       {/* 제목 줄 */}
       <View style={styles.inputRow}>
-        <Text style={styles.timeBox}>장소 | 시간</Text>
+        <Text style={styles.timeBox}>{memo.place} | {memo.time}</Text>
         <Text style={styles.titleText}>{memo.title}</Text>
       </View>
 

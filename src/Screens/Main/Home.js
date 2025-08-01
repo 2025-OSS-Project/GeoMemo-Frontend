@@ -19,7 +19,7 @@ import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import MapSection from './MapSection';
 import SlidePanel from './SlidePanel';
 import RouteBox from './RouteBox';
-import MemoModal from './MemoModal';
+// MemoModal import 제거 - Profile의 memoView 사용
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const SLIDE_HEIGHT = 400
@@ -33,14 +33,13 @@ export default function Home() {
   const [myUser, setMyUser] = useState(null);
   const [followingIds, setFollowingIds] = useState([]);
 
-  // MemoModal 테스트용 state
-  const [modalVisible, setModalVisible] = useState(false);
+  // memoView 사용을 위한 state
   const [selectedMemo, setSelectedMemo] = useState(null);
   const exampleMemo = {
     number: 1,
     time: '12:34',
     title: '테스트 메모',
-    content: '이것은 MemoModal 디자인 테스트용 예시입니다.',
+    content: '이것은 memoView 디자인 테스트용 예시입니다.',
   };
 
   const mapRef = useRef(null);
@@ -158,14 +157,7 @@ export default function Home() {
 
   return (
     <View style={{ flex: 1 }}>
-      {/* MemoModal: 슬라이드 패널에서 제목 클릭 시 노출 */}
-      <MemoModal
-        visible={modalVisible}
-        memo={selectedMemo || exampleMemo}
-        onClose={() => { setModalVisible(false); setSelectedMemo(null); }}
-        onBookmark={() => {}}
-        onNavigate={() => {}}
-      />
+      {/* MemoModal 제거 - Profile의 memoView 사용 */}
 
       {/* 기존 UI (맵, 슬라이드 등) */}
       {location ? (
@@ -214,12 +206,12 @@ export default function Home() {
             myProfileImage={myProfileImage}
             followingIds={followingIds}
             myUser={myUser}
-            onPressMemo={memo => { setSelectedMemo(memo); setModalVisible(true); }}
+            onPressMemo={memo => { setSelectedMemo(memo); }}
             SLIDE_HEIGHT={SLIDE_HEIGHT}
           />
         </>
       ) : (
-        <Text style={{ padding: 20 }}>화면 구성 중...</Text>
+        <Text style={{ padding: 20, margin: 'auto'}}>화면 구성 중...</Text>
       )}
     </View>
   );
@@ -252,7 +244,7 @@ const styles = StyleSheet.create({
   },
   myMemoManage: {
     position: 'absolute',
-    top: 140,
+    top: 150,
     right: 20,
     backgroundColor: '#fff',
     borderRadius: 25,
