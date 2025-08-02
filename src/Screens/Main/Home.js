@@ -211,7 +211,7 @@ export default function Home() {
           />
         </>
       ) : (
-        <Text style={{ padding: 20, margin: 'auto'}}>화면 구성 중...</Text>
+        <Text style={{ padding: 20, margin: 'auto'}}>지도 제작 중...</Text>
       )}
     </View>
   );

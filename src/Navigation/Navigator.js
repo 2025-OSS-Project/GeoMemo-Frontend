@@ -16,6 +16,8 @@ import SettingsHome from '../Screens/Setting/SettingsHome'
 import EditProfile from '../Screens/Setting/EditProfile'
 import ChangeNickname from '../Screens/Setting/ChangeNickname'
 import ChangePassword from '../Screens/Setting/ChangePassword'
+import Follower from '../Screens/Profile/Follower'
+import Following from '../Screens/Profile/Following'
 
 const Stack = createNativeStackNavigator();
 
@@ -38,6 +40,8 @@ export default function Navigator() {
       <Stack.Screen name="EditProfile" component={EditProfile}/>
       <Stack.Screen name="ChangeNickname" component={ChangeNickname}/>
       <Stack.Screen name="ChangePassword" component={ChangePassword}/>
+      <Stack.Screen name="Follower" component={Follower}/>
+      <Stack.Screen name="Following" component={Following}/>
     </Stack.Navigator>
     
   );
