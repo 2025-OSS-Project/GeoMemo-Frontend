@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons, FontAwesome, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-import ScrapMemo from './scrapMemo';
-import Insight from './insight';
+import ScrapMemo from './ScrapMemo';
+import Insight from './Insight';
+import HomeButton from '../Main/HomeButton';
 
 export default function MyProfile() {
   const navigation = useNavigation();
@@ -17,7 +18,7 @@ export default function MyProfile() {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={24} color="black" />
         </TouchableOpacity>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('SettingsHome')}>
           <Ionicons name="settings-outline" size={24} color="black" />
         </TouchableOpacity>
       </View>
@@ -31,14 +32,14 @@ export default function MyProfile() {
         <View style={styles.profileInfo}>
           <Text style={styles.nickname}>닉네임</Text>
           <View style={styles.followRow}>
-            <View style={styles.followBox}>
+            <TouchableOpacity style={styles.followBox} onPress={() => navigation.navigate('Follower')}>
               <Text style={styles.followNumber}>###</Text>
               <Text style={styles.followLabel}>팔로워</Text>
-            </View>
-            <View style={styles.followBox}>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.followBox} onPress={() => navigation.navigate('Following')}>
               <Text style={styles.followNumber}>###</Text>
               <Text style={styles.followLabel}>팔로잉</Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -66,6 +67,9 @@ export default function MyProfile() {
       <View style={styles.contentArea}>
         {activeTab === 'scrap' ? <ScrapMemo /> : <Insight />}
       </View>
+      
+      {/* 홈 버튼 */}
+      <HomeButton />
     </View>
   );
 }

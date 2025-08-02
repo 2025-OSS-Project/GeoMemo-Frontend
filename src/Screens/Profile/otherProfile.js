@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-import OtherMemoList from './otherMemoList';
-import Insight from './insight';
+import OtherMemoList from './OtherMemoList';
+import Insight from './Insight';
+import HomeButton from '../Main/HomeButton';
 
 export default function OtherProfile() {
   const navigation = useNavigation();
@@ -32,14 +33,14 @@ export default function OtherProfile() {
             <Text style={styles.followButtonText}>팔로우</Text>
           </TouchableOpacity>
           <View style={styles.followRow}>
-            <View style={styles.followBox}>
+            <TouchableOpacity style={styles.followBox} onPress={() => navigation.navigate('Follower')}>
               <Text style={styles.followNumber}>###</Text>
               <Text style={styles.followLabel}>팔로워</Text>
-            </View>
-            <View style={styles.followBox}>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.followBox} onPress={() => navigation.navigate('Following')}>
               <Text style={styles.followNumber}>###</Text>
               <Text style={styles.followLabel}>팔로잉</Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -67,6 +68,9 @@ export default function OtherProfile() {
       <View style={styles.contentArea}>
         {activeTab === 'memo' ? <OtherMemoList /> : <Insight />}
       </View>
+      
+      {/* 홈 버튼 */}
+      <HomeButton />
     </View>
   );
 }
