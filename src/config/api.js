@@ -1,17 +1,17 @@
 // API 설정 파일
 export const API_CONFIG = {
-  // 개발 환경 (로컬 모의 서버)
+  // 개발 환경 (새로운 백엔드 서버)
   development: {
-    baseURL: 'http://175.202.152.66:3001/api',
-    mapBoundsEndpoint: 'http://175.202.152.66:3001/api/map-bounds',
-    memosEndpoint: 'http://175.202.152.66:3001/api/memos',
+    baseURL: 'https://dco69dhctdpt.cloudfront.net/api',
+    mapBoundsEndpoint: 'https://dco69dhctdpt.cloudfront.net/api/map-bounds',
+    memosEndpoint: 'https://dco69dhctdpt.cloudfront.net/api/memo',
   },
   
-  // 프로덕션 환경 (실제 DB 서버)
+  // 프로덕션 환경 (새로운 백엔드 서버)
   production: {
-    baseURL: 'https://your-production-api.com/api',
-    mapBoundsEndpoint: 'https://your-production-api.com/api/map-bounds',
-    memosEndpoint: 'https://your-production-api.com/api/memos',
+    baseURL: 'https://dco69dhctdpt.cloudfront.net/api',
+    mapBoundsEndpoint: 'https://dco69dhctdpt.cloudfront.net/api/map-bounds',
+    memosEndpoint: 'https://dco69dhctdpt.cloudfront.net/api/memo',
   }
 };
 
@@ -219,6 +219,123 @@ export const updateMemo = async (memoId, updateData, userToken = 'test-token') =
   } catch (error) {
     console.error('❌ 메모 수정 실패:', error.message);
     console.error('🔗 API 엔드포인트:', `${config.memosEndpoint}/${memoId}`);
+    throw error;
+  }
+};
+
+// 회원가입 함수 (API 명세서에 맞춤)
+export const signUp = async (userData) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+
+    const response = await fetch(`${config.baseURL}/auth/signup`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(userData)
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorData.error || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기 시도
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    let result;
+    try {
+      result = await response.json();
+      console.log('✅ 회원가입 성공!');
+      console.log('📡 서버 응답:', result);
+    } catch (parseError) {
+      // JSON 파싱 실패 시 텍스트로 읽기
+      const responseText = await response.text();
+      throw new Error(`Invalid JSON response: ${responseText}`);
+    }
+    
+    // API 명세서에 맞춰 응답 처리
+    if (result.success && result.data) {
+      return {
+        success: true,
+        data: {
+          userId: result.data.userId,
+          username: result.data.username
+        }
+      };
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('❌ 회원가입 실패:', error.message);
+    console.error('🔗 API 엔드포인트:', `${config.baseURL}/auth/signup`);
+    throw error;
+  }
+};
+
+// 로그인 함수
+export const signIn = async (credentials) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+
+    const response = await fetch(`${config.baseURL}/auth/login`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(credentials)
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorData.error || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기 시도
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    let result;
+    try {
+      result = await response.json();
+      console.log('✅ 로그인 성공!');
+      console.log('📡 서버 응답:', result);
+    } catch (parseError) {
+      // JSON 파싱 실패 시 텍스트로 읽기
+      const responseText = await response.text();
+      throw new Error(`Invalid JSON response: ${responseText}`);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('❌ 로그인 실패:', error.message);
+    console.error('🔗 API 엔드포인트:', `${config.baseURL}/auth/login`);
     throw error;
   }
 }; 

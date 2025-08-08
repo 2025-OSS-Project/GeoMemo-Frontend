@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { getMemos } from '../../config/api';
 
 export default function AllMemo() {
@@ -35,6 +35,13 @@ export default function AllMemo() {
   useEffect(() => {
     fetchMemos();
   }, []);
+
+  // 화면이 포커스될 때마다 메모 목록 새로고침
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchMemos();
+    }, [])
+  );
 
   // 메모 날짜 포맷팅
   const formatDate = (dateString) => {
@@ -82,12 +89,12 @@ export default function AllMemo() {
             style={styles.memoItem}
             onPress={() => navigation.navigate('AllMemoView', { memo })}
           >
-                         <Text style={styles.title}>
-               {memo.location?.name || '제목 없음'}
-             </Text>
-             <Text style={styles.location}>
-               {memo.location?.address || '위치 없음'} | {formatDate(memo.createdAt)}
-             </Text>
+                                     <Text style={styles.title}>
+              {memo.title || '제목 없음'}
+            </Text>
+            <Text style={styles.location}>
+              {memo.location?.address || '위치 없음'} | {formatDate(memo.createdAt)}
+            </Text>
             <Text style={styles.content}>
               {memo.content.length > 50 ? `${memo.content.substring(0, 50)}...` : memo.content}
             </Text>

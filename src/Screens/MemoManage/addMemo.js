@@ -9,6 +9,8 @@ export default function AddMemo() {
   const navigation = useNavigation();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [location, setLocation] = useState('');
+  const [category, setCategory] = useState('');
   const [isPublic, setIsPublic] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
@@ -66,14 +68,15 @@ export default function AddMemo() {
     try {
       // API 명세서에 맞는 데이터 구조
       const memoData = {
+        title: title.trim() || '제목 없음',
         content: content.trim(),
         is_public: isPublic,
         user_id: 1, // 테스트용 사용자 ID
-        location_name: title.trim() || '제목 없음',
+        location_name: location.trim() || '위치 없음',
         location_latitude: currentLocation?.coords?.latitude || 37.5665,
         location_longitude: currentLocation?.coords?.longitude || 126.9780,
         location_address: locationName || '위치 정보 없음',
-        location_category: '기타',
+        location_category: category.trim() || '기타',
         file_url: [], // 파일 업로드 기능은 추후 구현
         created_at: formatCurrentTime() // 현재 시간 추가
       };
@@ -101,6 +104,21 @@ export default function AddMemo() {
           value={title}
           onChangeText={setTitle}
           style={styles.titleInput}
+        />
+      </View>
+
+      <View style={styles.inputRow}>
+        <TextInput
+          placeholder="위치를 입력하세요"
+          value={location}
+          onChangeText={setLocation}
+          style={styles.locationInput}
+        />
+        <TextInput
+          placeholder="카테고리를 입력하세요"
+          value={category}
+          onChangeText={setCategory}
+          style={styles.categoryInput}
         />
       </View>
 
@@ -150,8 +168,21 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 6,
   },
+  locationInput: {
+    flex: 1,
+    backgroundColor: '#eee',
+    padding: 8,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  categoryInput: {
+    flex: 1,
+    backgroundColor: '#eee',
+    padding: 8,
+    borderRadius: 6,
+  },
   contentInput: {
-    height: '80%',
+    height: '70%',
     backgroundColor: '#ddd',
     padding: 10,
     borderRadius: 6,

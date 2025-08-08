@@ -40,6 +40,51 @@ const authenticateToken = (req, res, next) => {
 
 // API 라우트
 
+// 0. 회원가입 API
+app.post('/api/auth/signup', (req, res) => {
+  const { name, nickname, password, email, phone } = req.body;
+  
+  // 간단한 유효성 검사
+  if (!name || !nickname || !password || !email || !phone) {
+    return res.status(400).json({
+      success: false,
+      error: '모든 필드를 입력해주세요'
+    });
+  }
+  
+  // 이메일 중복 확인
+  const existingUser = users.find(user => user.email === email);
+  if (existingUser) {
+    return res.status(400).json({
+      success: false,
+      error: '이미 존재하는 이메일입니다'
+    });
+  }
+  
+  // 새 사용자 생성
+  const newUser = {
+    id: users.length + 1,
+    name,
+    nickname,
+    email,
+    phone,
+    createdAt: new Date().toISOString()
+  };
+  
+  users.push(newUser);
+  
+  console.log('✅ 회원가입 성공:', newUser);
+  
+  res.json({
+    success: true,
+    data: {
+      userId: newUser.id,
+      username: newUser.nickname
+    },
+    error: null
+  });
+});
+
 // 1. 지도 경계 데이터 전송
 app.post('/api/map-bounds', (req, res) => {
   const { bounds, timestamp, deviceInfo } = req.body;
@@ -70,6 +115,7 @@ app.get('/api/memos', authenticateToken, (req, res) => {
     data: {
       memos: paginatedMemos.map(memo => ({
         memoId: memo.memoId,
+        title: memo.title,
         content: memo.content,
         createdAt: memo.createdAt,
         updatedAt: memo.updatedAt,
@@ -104,6 +150,7 @@ app.get('/api/memos/:id', authenticateToken, (req, res) => {
     success: true,
     data: {
       memoId: memo.memoId,
+      title: memo.title,
       content: memo.content,
       createdAt: memo.createdAt,
       updatedAt: memo.updatedAt,
@@ -118,6 +165,7 @@ app.get('/api/memos/:id', authenticateToken, (req, res) => {
 // 4. 메모 생성 (API 명세서에 맞춤)
 app.post('/api/memos', authenticateToken, (req, res) => {
   const { 
+    title,
     content, 
     is_public = false, 
     user_id, 
@@ -139,6 +187,7 @@ app.post('/api/memos', authenticateToken, (req, res) => {
   
   const newMemo = {
     memoId: memos.length + 1,
+    title: title || '제목 없음',
     content,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -178,10 +227,11 @@ app.put('/api/memos/:id', authenticateToken, (req, res) => {
     });
   }
   
-  const { content, is_public, remain_photo_ids = [], new_photo_urls = [] } = req.body;
+  const { title, content, is_public, remain_photo_ids = [], new_photo_urls = [] } = req.body;
   
   // 메모 업데이트
   const updatedMemo = { ...memos[memoIndex] };
+  if (title !== undefined) updatedMemo.title = title;
   if (content !== undefined) updatedMemo.content = content;
   if (is_public !== undefined) updatedMemo.isPublic = is_public;
   

@@ -7,13 +7,15 @@ import { deleteMemo, updateMemo } from '../../config/api';
 export default function AllMemoView() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { memo } = route.params;
+  const { memo: initialMemo } = route.params;
 
-  const [isPublic, setIsPublic] = useState(memo.isPublic);
+  const [memo, setMemo] = useState(initialMemo);
+  const [isPublic, setIsPublic] = useState(initialMemo.isPublic);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editedContent, setEditedContent] = useState(memo.content);
+  const [editedContent, setEditedContent] = useState(initialMemo.content);
+  const [editedTitle, setEditedTitle] = useState(initialMemo.title || '');
 
   // 메모 날짜 포맷팅
   const formatDate = (dateString) => {
@@ -38,12 +40,15 @@ export default function AllMemoView() {
           text: '삭제',
           style: 'destructive',
           onPress: async () => {
-            try {
-              setIsDeleting(true);
-              await deleteMemo(memo.memoId);
-              Alert.alert('성공', '메모가 삭제되었습니다.', [
-                { text: '확인', onPress: () => navigation.goBack() }
-              ]);
+                         try {
+               setIsDeleting(true);
+               await deleteMemo(memo.memoId);
+               Alert.alert('성공', '메모가 삭제되었습니다.', [
+                 { text: '확인', onPress: () => {
+                   // 삭제 후 이전 화면으로 돌아가면서 리스트 새로고침 트리거
+                   navigation.goBack();
+                 }}
+               ]);
             } catch (error) {
               Alert.alert('오류', `메모 삭제에 실패했습니다: ${error.message}`);
             } finally {
@@ -67,7 +72,18 @@ export default function AllMemoView() {
         new_photo_urls: [] // 새로운 사진 없음
       });
       
-      setIsPublic(newPublicStatus);
+      // 서버 응답에서 업데이트된 메모 데이터 가져오기
+      const result = await updateMemo(memo.memoId, {
+        is_public: newPublicStatus,
+        remain_photo_ids: [],
+        new_photo_urls: []
+      });
+      
+      if (result.success && result.data) {
+        setMemo(result.data);
+        setIsPublic(result.data.isPublic);
+      }
+      
       Alert.alert('성공', `메모가 ${newPublicStatus ? '공개' : '비공개'}로 변경되었습니다.`);
     } catch (error) {
       Alert.alert('오류', `상태 변경에 실패했습니다: ${error.message}`);
@@ -96,6 +112,7 @@ export default function AllMemoView() {
       setIsUpdating(true);
       
       const updateData = {
+        title: editedTitle,
         content: editedContent,
         is_public: isPublic,
         remain_photo_ids: [], // 기존 사진 모두 유지
@@ -107,6 +124,14 @@ export default function AllMemoView() {
       const result = await updateMemo(memo.memoId, updateData);
       
       console.log('✅ 서버 응답:', result);
+      
+      // 업데이트된 메모 데이터로 상태 업데이트
+      if (result.success && result.data) {
+        setMemo(result.data);
+        setEditedContent(result.data.content);
+        setEditedTitle(result.data.title || '');
+        setIsPublic(result.data.isPublic);
+      }
       
       setIsEditing(false);
       Alert.alert('성공', '메모가 수정되었습니다.');
@@ -123,7 +148,16 @@ export default function AllMemoView() {
 
       {/* 제목 줄 */}
       <View style={styles.inputRow}>
-        <Text style={styles.titleText}>{memo.location?.name || '제목 없음'}</Text>
+        {isEditing ? (
+          <TextInput
+            style={styles.titleTextInput}
+            value={editedTitle}
+            onChangeText={setEditedTitle}
+            placeholder="제목을 입력하세요"
+          />
+        ) : (
+          <Text style={styles.titleText}>{memo.title || '제목 없음'}</Text>
+        )}
       </View>
       
       {/* 장소|시간 */}
@@ -170,7 +204,15 @@ export default function AllMemoView() {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => setIsEditing(false)} disabled={isUpdating || !isEditing}>
+        <TouchableOpacity 
+          onPress={() => {
+            setIsEditing(false);
+            // 수정 취소 시 원래 데이터로 복원
+            setEditedContent(memo.content);
+            setEditedTitle(memo.title || '');
+          }} 
+          disabled={isUpdating || !isEditing}
+        >
           <Text style={[styles.footerBtnText, (isUpdating || !isEditing) && styles.disabledBtn]}>
             취소
           </Text>
@@ -207,6 +249,16 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     fontSize: 16,
     color: '#333',
+  },
+  titleTextInput: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 8,
+    borderRadius: 6,
+    fontSize: 16,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   locationText: {
     flex: 1,
