@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, TextInput 
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Entypo, AntDesign } from '@expo/vector-icons';
 import { deleteMemo, updateMemo } from '../../config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function AllMemoView() {
   const navigation = useNavigation();
@@ -40,15 +41,16 @@ export default function AllMemoView() {
           text: '삭제',
           style: 'destructive',
           onPress: async () => {
-                         try {
-               setIsDeleting(true);
-               await deleteMemo(memo.memoId);
-               Alert.alert('성공', '메모가 삭제되었습니다.', [
-                 { text: '확인', onPress: () => {
-                   // 삭제 후 이전 화면으로 돌아가면서 리스트 새로고침 트리거
-                   navigation.goBack();
-                 }}
-               ]);
+            try {
+              setIsDeleting(true);
+              const userToken = await AsyncStorage.getItem('userToken');
+              await deleteMemo(memo.memoId, userToken);
+              Alert.alert('성공', '메모가 삭제되었습니다.', [
+                { text: '확인', onPress: () => {
+                  // 삭제 후 이전 화면으로 돌아가면서 리스트 새로고침 트리거
+                  navigation.goBack();
+                }}
+              ]);
             } catch (error) {
               Alert.alert('오류', `메모 삭제에 실패했습니다: ${error.message}`);
             } finally {
@@ -65,19 +67,14 @@ export default function AllMemoView() {
     try {
       setIsUpdating(true);
       const newPublicStatus = !isPublic;
-      
-      await updateMemo(memo.memoId, {
-        is_public: newPublicStatus,
-        remain_photo_ids: [], // 기존 사진 모두 유지
-        new_photo_urls: [] // 새로운 사진 없음
-      });
+      const userToken = await AsyncStorage.getItem('userToken');
       
       // 서버 응답에서 업데이트된 메모 데이터 가져오기
       const result = await updateMemo(memo.memoId, {
         is_public: newPublicStatus,
-        remain_photo_ids: [],
-        new_photo_urls: []
-      });
+        remain_photo_ids: [], // 기존 사진 모두 유지
+        new_photo_urls: [] // 새로운 사진 없음
+      }, userToken);
       
       if (result.success && result.data) {
         setMemo(result.data);
@@ -90,6 +87,11 @@ export default function AllMemoView() {
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  // isPublic 상태 직접 변경 함수 (눈 아이콘 클릭 시)
+  const handlePublicStatusChange = (newStatus) => {
+    setIsPublic(newStatus);
   };
 
   // 수정 모드 토글 함수
@@ -108,8 +110,11 @@ export default function AllMemoView() {
     try {
       console.log('🔧 메모 수정 시작:', memo.memoId);
       console.log('📝 수정할 내용:', editedContent);
+      console.log('📝 수정할 제목:', editedTitle);
       
       setIsUpdating(true);
+      const userToken = await AsyncStorage.getItem('userToken');
+      console.log('🔑 사용자 토큰:', userToken ? '토큰 있음' : '토큰 없음');
       
       const updateData = {
         title: editedTitle,
@@ -119,11 +124,12 @@ export default function AllMemoView() {
         new_photo_urls: [] // 새로운 사진 없음
       };
       
-      console.log('📡 서버로 전송할 데이터:', updateData);
+      console.log('📡 서버로 전송할 데이터:', JSON.stringify(updateData, null, 2));
+      console.log('🔗 API 엔드포인트:', `PUT ${memo.memoId}`);
       
-      const result = await updateMemo(memo.memoId, updateData);
+      const result = await updateMemo(memo.memoId, updateData, userToken);
       
-      console.log('✅ 서버 응답:', result);
+      console.log('✅ 서버 응답:', JSON.stringify(result, null, 2));
       
       // 업데이트된 메모 데이터로 상태 업데이트
       if (result.success && result.data) {
@@ -137,6 +143,8 @@ export default function AllMemoView() {
       Alert.alert('성공', '메모가 수정되었습니다.');
     } catch (error) {
       console.error('❌ 메모 수정 오류:', error);
+      console.error('❌ 오류 상세:', error.message);
+      console.error('❌ 오류 스택:', error.stack);
       Alert.alert('오류', `메모 수정에 실패했습니다: ${error.message}`);
     } finally {
       setIsUpdating(false);
@@ -180,10 +188,15 @@ export default function AllMemoView() {
         )}
       </ScrollView>
 
+
+
       {/* 하단 버튼들 */}
       <View style={styles.footer}>
-        <TouchableOpacity onPress={handleTogglePublic} disabled={isUpdating}>
-          <View style={[styles.footerBtn, isUpdating && styles.disabledBtn]}>
+        <TouchableOpacity 
+          onPress={() => handlePublicStatusChange(!isPublic)} 
+          disabled={isUpdating || !isEditing}
+        >
+          <View style={[styles.footerBtn, (isUpdating || !isEditing) && styles.disabledBtn]}>
             {isPublic ? (
               <Entypo name="eye" size={24} color="black" />
             ) : (

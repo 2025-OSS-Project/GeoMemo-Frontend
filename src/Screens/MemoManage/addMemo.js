@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Entypo } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createMemo } from '../../config/api';
 import * as Location from 'expo-location';
 
@@ -68,20 +69,20 @@ export default function AddMemo() {
     try {
       // API 명세서에 맞는 데이터 구조
       const memoData = {
-        title: title.trim() || '제목 없음',
         content: content.trim(),
+        title: title.trim() || '제목 없음',
         is_public: isPublic,
-        user_id: 1, // 테스트용 사용자 ID
         location_name: location.trim() || '위치 없음',
         location_latitude: currentLocation?.coords?.latitude || 37.5665,
         location_longitude: currentLocation?.coords?.longitude || 126.9780,
         location_address: locationName || '위치 정보 없음',
         location_category: category.trim() || '기타',
-        file_url: [], // 파일 업로드 기능은 추후 구현
-        created_at: formatCurrentTime() // 현재 시간 추가
+        file_url: ""
       };
 
-      const result = await createMemo(memoData);
+      // 저장된 토큰 가져오기
+      const userToken = await AsyncStorage.getItem('userToken');
+      const result = await createMemo(memoData, userToken);
       
       Alert.alert('성공', '메모가 성공적으로 저장되었습니다.', [
         { text: '확인', onPress: () => navigation.goBack() }

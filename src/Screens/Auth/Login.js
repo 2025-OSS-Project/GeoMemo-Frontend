@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { signIn } from '../../config/api';
 
 export default function Login() {
@@ -34,8 +35,9 @@ export default function Login() {
       const result = await signIn(credentials);
       
       if (result.access_token) {
-        // 로그인 성공 - 토큰 저장 (나중에 AsyncStorage 사용 가능)
-        console.log('✅ 로그인 성공! 토큰:', result.access_token);
+        // 로그인 성공 - 토큰을 AsyncStorage에 저장
+        await AsyncStorage.setItem('userToken', result.access_token);
+        console.log('✅ 로그인 성공! 토큰 저장됨:', result.access_token);
         Alert.alert('성공', '로그인되었습니다!', [
           { text: '확인', onPress: () => navigation.navigate('MemoMap') }
         ]);
