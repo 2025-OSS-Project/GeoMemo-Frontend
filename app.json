@@ -26,9 +26,6 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "exclude": [
-      "mock-server/**/*"
-    ],
     "extra": {
       "eas": {
         "projectId": "96b8eb3e-8c89-47d5-bc27-f3f067fc219e"

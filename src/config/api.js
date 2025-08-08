@@ -262,24 +262,24 @@ export const signUp = async (userData) => {
       result = await response.json();
       console.log('✅ 회원가입 성공!');
       console.log('📡 서버 응답:', result);
+      console.log('📡 응답 타입:', typeof result);
+      console.log('📡 success 필드:', result.success);
+      console.log('📡 data 필드:', result.data);
     } catch (parseError) {
       // JSON 파싱 실패 시 텍스트로 읽기
       const responseText = await response.text();
       throw new Error(`Invalid JSON response: ${responseText}`);
     }
     
-    // API 명세서에 맞춰 응답 처리
-    if (result.success && result.data) {
-      return {
-        success: true,
-        data: {
-          userId: result.data.userId,
-          username: result.data.username
-        }
-      };
-    }
-    
-    return result;
+    // HTTP 200이면 성공으로 처리 (실제 DB에 저장되었으므로)
+    console.log('✅ HTTP 200 응답 - 성공 처리');
+    return {
+      success: true,
+      data: {
+        userId: result.userId || result.data?.userId,
+        username: result.username || result.data?.username
+      }
+    };
   } catch (error) {
     console.error('❌ 회원가입 실패:', error.message);
     console.error('🔗 API 엔드포인트:', `${config.baseURL}/auth/signup`);
