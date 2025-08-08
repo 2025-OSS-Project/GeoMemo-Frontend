@@ -97,8 +97,8 @@ export default function AllMemo() {
             <Text style={styles.location}>
               {memo.location?.address || '위치 없음'} | {formatDate(memo.createdAt)}
             </Text>
-            <Text style={styles.content}>
-              {memo.content.length > 50 ? `${memo.content.substring(0, 50)}...` : memo.content}
+            <Text style={styles.content} numberOfLines={2}>
+              {memo.content}
             </Text>
             <Text style={styles.publicStatus}>
               {memo.isPublic ? '공개' : '비공개'}

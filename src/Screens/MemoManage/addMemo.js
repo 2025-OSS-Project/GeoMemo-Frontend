@@ -1,5 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Alert,
+  TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+  ScrollView,
+  Keyboard,
+  Platform
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Entypo } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,6 +28,29 @@ export default function AddMemo() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [locationName, setLocationName] = useState('');
+  const contentRef = useRef(null);
+
+  // 들여쓰기 처리 함수
+  const handleContentChange = (text) => {
+    // 탭 키나 특수 문자로 들여쓰기 시뮬레이션
+    let processedText = text;
+    
+    // 줄바꿈 후 자동 들여쓰기 (선택사항)
+    if (text.endsWith('\n')) {
+      const lines = text.split('\n');
+      const lastLine = lines[lines.length - 1];
+      if (lastLine.trim() === '') {
+        // 빈 줄이면 이전 줄의 들여쓰기 수준 유지
+        const previousLine = lines[lines.length - 2] || '';
+        const indentLevel = (previousLine.match(/^(\s*)/) || [''])[0].length;
+        if (indentLevel > 0) {
+          processedText = text + ' '.repeat(indentLevel);
+        }
+      }
+    }
+    
+    setContent(processedText);
+  };
   
   // 현재 시간을 포맷팅하는 함수
   const formatCurrentTime = () => {
@@ -96,65 +131,113 @@ export default function AddMemo() {
   };
 
   return (
-    <View style={styles.container}>
-
-      <View style={styles.inputRow}>
-        <Text style={styles.timeBox}>{formatCurrentTime()}</Text>
-        <TextInput
-          placeholder="제목을 입력하세요"
-          value={title}
-          onChangeText={setTitle}
-          style={styles.titleInput}
-        />
-      </View>
-
-      <View style={styles.inputRow}>
-        <TextInput
-          placeholder="위치를 입력하세요"
-          value={location}
-          onChangeText={setLocation}
-          style={styles.locationInput}
-        />
-        <TextInput
-          placeholder="카테고리를 입력하세요"
-          value={category}
-          onChangeText={setCategory}
-          style={styles.categoryInput}
-        />
-      </View>
-
-      <TextInput
-        style={styles.contentInput}
-        multiline
-        value={content}
-        onChangeText={setContent}
-        placeholder="메모를 입력하세요"
-      />
-
-      <View style={styles.footer}>
-        <TouchableOpacity onPress={() => setIsPublic(!isPublic)}>
-          <Text style={styles.footerBtn}>{isPublic ? 
-          <Entypo name="eye" size={24} color="black" /> : <Entypo name="eye-with-line" size={24} color="black" />}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          onPress={handleSaveMemo}
-          disabled={isLoading}
-          style={[styles.footerBtn, isLoading && styles.disabledBtn]}
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <TouchableWithoutFeedback onPress={() => {
+        Keyboard.dismiss();
+        // 포커스 해제
+        if (contentRef.current) {
+          contentRef.current.blur();
+        }
+      }}>
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="never"
+          showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets={true}
         >
-          <Text style={styles.footerBtnText}>
-            {isLoading ? '저장 중...' : '저장'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+          <View style={styles.inputRow}>
+            <Text style={styles.timeBox}>{formatCurrentTime()}</Text>
+            <TextInput
+              placeholder="제목을 입력하세요"
+              value={title}
+              onChangeText={setTitle}
+              style={styles.titleInput}
+              returnKeyType="next"
+            />
+          </View>
+
+          <View style={styles.inputRow}>
+            <TextInput
+              placeholder="위치를 입력하세요"
+              value={location}
+              onChangeText={setLocation}
+              style={styles.locationInput}
+              returnKeyType="next"
+            />
+            <TextInput
+              placeholder="카테고리를 입력하세요"
+              value={category}
+              onChangeText={setCategory}
+              style={styles.categoryInput}
+              returnKeyType="next"
+            />
+          </View>
+
+          <TextInput
+            ref={contentRef}
+            style={styles.contentInput}
+            multiline
+            value={content}
+            onChangeText={handleContentChange}
+            placeholder="메모를 입력하세요"
+            returnKeyType="default"
+            blurOnSubmit={false}
+            textAlignVertical="top"
+            scrollEnabled={true}
+            autoCapitalize="sentences"
+            autoCorrect={true}
+            spellCheck={true}
+          />
+
+          <View style={styles.footer}>
+            <TouchableOpacity onPress={() => setIsPublic(!isPublic)}>
+              <View style={styles.footerBtn}>
+                {isPublic ? 
+                  <Entypo name="eye" size={24} color="black" /> : 
+                  <Entypo name="eye-with-line" size={24} color="black" />
+                }
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              onPress={handleSaveMemo}
+              disabled={isLoading}
+              style={[styles.footerBtn, isLoading && styles.disabledBtn]}
+            >
+              <Text style={styles.footerBtnText}>
+                {isLoading ? '저장 중...' : '저장'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16 },
-  inputRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  container: { 
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    flexGrow: 1,
+    paddingBottom: 100, // 키보드가 올라올 때 여유 공간 확보
+  },
+  inputRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 10 
+  },
   timeBox: {
     backgroundColor: '#999',
     paddingHorizontal: 8,
@@ -183,17 +266,20 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   contentInput: {
-    height: '70%',
+    minHeight: 300,
+    maxHeight: 400,
     backgroundColor: '#ddd',
     padding: 10,
     borderRadius: 6,
     textAlignVertical: 'top',
     marginBottom: 20,
+    fontSize: 16,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 10,
+    marginTop: 'auto',
   },
   footerBtn: {
     paddingHorizontal: 12,
