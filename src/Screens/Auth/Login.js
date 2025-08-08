@@ -5,13 +5,50 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { signIn } from '../../config/api';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation();
+
+  const handleLogin = async () => {
+    // 입력값 검증
+    if (!email || !password) {
+      Alert.alert('오류', '이메일과 비밀번호를 입력해주세요.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const credentials = {
+        email: email.trim(),
+        password: password
+      };
+
+      const result = await signIn(credentials);
+      
+      if (result.access_token) {
+        // 로그인 성공 - 토큰 저장 (나중에 AsyncStorage 사용 가능)
+        console.log('✅ 로그인 성공! 토큰:', result.access_token);
+        Alert.alert('성공', '로그인되었습니다!', [
+          { text: '확인', onPress: () => navigation.navigate('MemoMap') }
+        ]);
+      } else {
+        Alert.alert('오류', '로그인에 실패했습니다.');
+      }
+      
+    } catch (error) {
+      Alert.alert('오류', error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -23,6 +60,9 @@ export default function Login() {
         style={styles.input}
         value={email}
         onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        returnKeyType="next"
       />
 
       <Text style={styles.label}>비밀번호</Text>
@@ -32,10 +72,18 @@ export default function Login() {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        returnKeyType="done"
+        onSubmitEditing={handleLogin}
       />
 
-      <TouchableOpacity style={styles.loginButton} onPress={() => navigation.navigate('MemoMap')}>
-        <Text style={styles.loginButtonText} > 로그인</Text>
+      <TouchableOpacity 
+        style={[styles.loginButton, isLoading && styles.disabledButton]} 
+        onPress={handleLogin}
+        disabled={isLoading}
+      >
+        <Text style={styles.loginButtonText}>
+          {isLoading ? '로그인 중...' : '로그인'}
+        </Text>
       </TouchableOpacity>
 
       <View style={styles.dividerContainer}>
@@ -44,18 +92,17 @@ export default function Login() {
         <View style={styles.line} />
       </View>
 
-      <TouchableOpacity style={[styles.socialButton, styles.googleButton]} onPress={() => navigation.navigate('UserInfoInput')}>
+      <TouchableOpacity style={[styles.socialButton, styles.googleButton]}>
         <Text style={styles.socialText}>Google로 로그인</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.socialButton, styles.naverButton]} onPress={() => navigation.navigate('UserInfoInput')}>
+      <TouchableOpacity style={[styles.socialButton, styles.naverButton]}>
         <Text style={styles.socialText}>Naver로 로그인</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.socialButton, styles.kakaoButton]} onPress={() => navigation.navigate('UserInfoInput')}>
+      <TouchableOpacity style={[styles.socialButton, styles.kakaoButton]}>
         <Text style={styles.socialText}>Kakao로 로그인</Text>
       </TouchableOpacity>
-
 
       <Text style={styles.bottomText}>
         계정이 없으신가요?{' '}
@@ -66,7 +113,6 @@ export default function Login() {
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -99,6 +145,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginBottom: 24,
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
   },
   loginButtonText: {
     color: 'white',
@@ -137,7 +186,7 @@ const styles = StyleSheet.create({
     color: '#3366ff',
     fontWeight: 'bold',
   },
-    googleButton: {
+  googleButton: {
     backgroundColor: '#e2e1e1ff',
   },
   naverButton: {
