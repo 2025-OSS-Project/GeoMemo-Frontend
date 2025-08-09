@@ -798,7 +798,7 @@ export const updatePrivacySetting = async (privacySetting, userToken) => {
 
     console.log('공개설정 변경 시작:', privacySetting);
 
-    const response = await fetch(`${config.baseURL}/api/user/update-privacy`, {
+    const response = await fetch(`${config.baseURL}/user/update-privacy`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ 

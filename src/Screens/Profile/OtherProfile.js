@@ -79,7 +79,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 30,
-    marginTop: 20,
     paddingHorizontal: 20,
     backgroundColor: '#fff',
   },
@@ -87,7 +86,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-start',
     alignItems: 'center',
-    marginTop: 5,
+    marginTop: 10,
     marginBottom: 10,
   },
   profileSection: {
