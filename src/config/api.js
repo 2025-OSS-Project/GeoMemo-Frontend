@@ -724,4 +724,177 @@ export const getProfileImage = async (userId, userToken) => {
     console.error(' API 엔드포인트:', `${config.baseURL}/user/profile-image?user_id=${userId}`);
     throw error;
   }
+};
+
+// 사용자 검색 함수
+export const searchUsers = async (keyword, type = 'nickname', limit = 10, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    
+    // 토큰이 있을 때만 Authorization 헤더 추가
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+    }
+
+    // 쿼리 파라미터 구성 (API 명세서에 맞춤)
+    const queryParams = new URLSearchParams({
+      keyword: keyword || '',
+      type: type, // nickname 또는 email
+      limit: limit.toString()
+    });
+
+    const url = `${config.baseURL}/user/search?${queryParams}`;
+    console.log('사용자 검색 API 호출:', url);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('서버 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기 시도
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('사용자 검색 성공!');
+    console.log('검색 결과:', result);
+    return result;
+  } catch (error) {
+    console.error('사용자 검색 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/search`);
+    throw error;
+  }
+};
+
+// 공개설정 변경 함수
+export const updatePrivacySetting = async (privacySetting, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    console.log('공개설정 변경 시작:', privacySetting);
+
+    const response = await fetch(`${config.baseURL}/api/user/update-privacy`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ 
+        privacy_settings: privacySetting // 'open', 'semi', 'closed'
+      })
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('서버 에러 응답:', errorData);
+        
+        // 에러 메시지 추출 로직
+        if (errorData.detail) {
+          if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail.map(err => err.msg || err.message || 'Validation error').join(', ');
+          } else {
+            errorMessage = errorData.detail;
+          }
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else {
+          errorMessage = JSON.stringify(errorData);
+        }
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기 시도
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('공개설정 변경 성공!');
+    console.log('서버 응답:', result);
+    return result;
+  } catch (error) {
+    console.error('공개설정 변경 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/update-privacy`);
+    throw error;
+  }
+};
+
+// 공개설정 조회 함수
+export const getUserPrivacySetting = async (userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    console.log('공개설정 조회 시작');
+
+    const response = await fetch(`${config.baseURL}/api/user/privacy-setting`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('서버 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기 시도
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('공개설정 조회 성공!');
+    console.log('서버 응답:', result);
+    return result;
+  } catch (error) {
+    console.error('공개설정 조회 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/privacy-setting`);
+    throw error;
+  }
 }; 

@@ -78,7 +78,8 @@ export default function OtherProfile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 50,
+    paddingTop: 30,
+    marginTop: 20,
     paddingHorizontal: 20,
     backgroundColor: '#fff',
   },
@@ -86,13 +87,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-start',
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 5,
     marginBottom: 10,
   },
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 30,
+    marginTop: 20,
   },
   photoCircle: {
     width: 100,
@@ -145,7 +146,7 @@ const styles = StyleSheet.create({
   },
   tabRow: {
     flexDirection: 'row',
-    marginTop: 30,
+    marginTop: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
