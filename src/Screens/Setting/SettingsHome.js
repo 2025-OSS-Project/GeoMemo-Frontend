@@ -33,7 +33,7 @@ export default function SettingsHome() {
             try {
               // AsyncStorage에서 토큰 삭제
               await AsyncStorage.removeItem('userToken');
-              console.log('✅ 로그아웃 완료: 토큰 삭제됨');
+              console.log('로그아웃 완료: 토큰 삭제됨');
               
               // Login 화면으로 이동 (스택 초기화)
               navigation.reset({
@@ -41,7 +41,7 @@ export default function SettingsHome() {
                 routes: [{ name: 'Login' }],
               });
             } catch (error) {
-              console.error('❌ 로그아웃 오류:', error);
+              console.error('로그아웃 오류:', error);
               Alert.alert('오류', '로그아웃 중 오류가 발생했습니다.');
             }
           }
@@ -75,7 +75,7 @@ export default function SettingsHome() {
               if (result.success) {
                 // AsyncStorage에서 토큰 삭제
                 await AsyncStorage.removeItem('userToken');
-                console.log('✅ 회원탈퇴 완료');
+                console.log('회원탈퇴 완료');
                 
                 Alert.alert(
                   '탈퇴 완료',
@@ -97,7 +97,7 @@ export default function SettingsHome() {
                 Alert.alert('오류', '회원탈퇴에 실패했습니다.');
               }
             } catch (error) {
-              console.error('❌ 회원탈퇴 오류:', error);
+              console.error('회원탈퇴 오류:', error);
               Alert.alert('오류', `회원탈퇴 중 오류가 발생했습니다: ${error.message}`);
             }
           }

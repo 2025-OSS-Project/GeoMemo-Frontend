@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { uploadImageToS3, validateImage } from '../../utils/s3Upload';
+import { saveProfileImage } from '../../config/api';
 
 export default function EditProfile() {
   const navigation = useNavigation();
   const [selectedImage, setSelectedImage] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // 권한 요청 함수
   const requestPermissions = async () => {
@@ -79,21 +83,75 @@ export default function EditProfile() {
     }
   };
 
-  // 프로필 저장 함수 (나중에 S3 업로드 로직 추가 예정)
-  const handleSaveProfile = () => {
-    if (selectedImage) {
-      Alert.alert(
-        '알림',
-        '프로필 사진이 선택되었습니다. S3 업로드 기능은 백엔드와 협의 후 구현 예정입니다.',
-        [
-          {
-            text: '확인',
-            onPress: () => console.log('선택된 이미지:', selectedImage)
-          }
-        ]
-      );
-    } else {
+  // 사용자 ID 가져오기 (실제로는 AsyncStorage나 Context에서 가져와야 함)
+  const getUserId = async () => {
+    try {
+      const userToken = await AsyncStorage.getItem('userToken');
+      if (!userToken) {
+        throw new Error('로그인이 필요합니다.');
+      }
+      // 실제로는 토큰을 디코딩하거나 API를 통해 사용자 ID를 가져와야 합니다
+      // 임시로 토큰을 사용자 ID로 사용
+      return userToken.substring(0, 10); // 임시 사용자 ID
+    } catch (error) {
+      throw new Error('사용자 정보를 가져올 수 없습니다.');
+    }
+  };
+
+  // 프로필 저장 함수 (S3 업로드 + API 호출)
+  const handleSaveProfile = async () => {
+    if (!selectedImage) {
       Alert.alert('알림', '변경할 프로필 사진을 선택해주세요.');
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      // 1. 이미지 검증
+      await validateImage(selectedImage);
+      
+      // 2. 사용자 토큰과 ID 가져오기
+      const userToken = await AsyncStorage.getItem('userToken');
+      if (!userToken) {
+        Alert.alert('오류', '로그인이 필요합니다.');
+        navigation.navigate('Login');
+        return;
+      }
+      
+      const userId = await getUserId();
+      
+      // 3. S3에 이미지 직접 업로드
+      console.log('S3 업로드 시작...');
+      const imageUrl = await uploadImageToS3(selectedImage, userId);
+      
+      // 4. 백엔드에 이미지 URL 저장 (API 명세서에 맞춤)
+      console.log('백엔드에 URL 저장 시작...');
+      const result = await saveProfileImage(imageUrl, userToken);
+      
+      if (result.success) {
+        Alert.alert(
+          '성공',
+          '프로필 사진이 성공적으로 변경되었습니다!',
+          [
+            {
+              text: '확인',
+              onPress: () => navigation.goBack()
+            }
+          ]
+        );
+      } else {
+        throw new Error('프로필 이미지 저장에 실패했습니다.');
+      }
+      
+    } catch (error) {
+      console.error('프로필 사진 업로드 실패:', error);
+      Alert.alert(
+        '오류', 
+        error.message || '프로필 사진 업로드 중 오류가 발생했습니다.'
+      );
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -126,8 +184,16 @@ export default function EditProfile() {
       </TouchableOpacity>
 
       {/* 저장 버튼 */}
-      <TouchableOpacity style={styles.saveButton} onPress={handleSaveProfile}>
-        <Text style={styles.saveText}>저장</Text>
+      <TouchableOpacity 
+        style={[styles.saveButton, isUploading && styles.saveButtonDisabled]} 
+        onPress={handleSaveProfile}
+        disabled={isUploading}
+      >
+        {isUploading ? (
+          <ActivityIndicator size="small" color="#000" />
+        ) : (
+          <Text style={styles.saveText}>저장</Text>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -190,6 +256,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     alignSelf: 'center',
     marginTop: 275,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.6,
   },
   saveText: {
     fontSize: 13,

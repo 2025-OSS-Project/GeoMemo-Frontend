@@ -86,7 +86,7 @@ export default function ChangePassword() {
       }
 
       // API 호출
-      const result = await updatePassword(newPassword, userToken);
+      const result = await updatePassword(currentPassword, newPassword, userToken);
 
       if (result.success) {
         Alert.alert(
@@ -280,6 +280,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     fontSize: 15,
+    color: '#000',
   },
   eyeButton: {
     paddingHorizontal: 15,

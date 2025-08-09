@@ -37,7 +37,7 @@ export default function Login() {
       if (result.access_token) {
         // 로그인 성공 - 토큰을 AsyncStorage에 저장
         await AsyncStorage.setItem('userToken', result.access_token);
-        console.log('✅ 로그인 성공! 토큰 저장됨:', result.access_token);
+        console.log('로그인 성공! 토큰 저장됨:', result.access_token);
         Alert.alert('성공', '로그인되었습니다!', [
           { text: '확인', onPress: () => navigation.navigate('MemoMap') }
         ]);
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontSize: 16,
     fontWeight: '500',
-    color: '#333',
+    color: '#000',
   },
   loginButton: {
     backgroundColor: '#111',
