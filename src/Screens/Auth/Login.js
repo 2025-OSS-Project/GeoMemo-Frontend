@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { signIn } from '../../config/api';
+import { signIn } from '../../config/Api';
 
 export default function Login() {
   const [email, setEmail] = useState('');

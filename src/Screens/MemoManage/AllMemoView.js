@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Entypo, AntDesign } from '@expo/vector-icons';
-import { deleteMemo, updateMemo } from '../../config/api';
+import { deleteMemo, updateMemo } from '../../config/Api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function AllMemoView() {

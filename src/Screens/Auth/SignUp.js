@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { signUp } from '../../config/api';
+import { signUp } from '../../config/Api';
 
 export default function SignUp() {
   const navigation = useNavigation();
