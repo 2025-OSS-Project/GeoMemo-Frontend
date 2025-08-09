@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getMemos } from '../../config/api';
+import { AntDesign } from '@expo/vector-icons';
 
 export default function AllMemo() {
   const navigation = useNavigation();
@@ -16,17 +18,18 @@ export default function AllMemo() {
       setIsLoading(true);
       setError(null);
       
-      const result = await getMemos(1, 20); // 첫 페이지, 20개씩
+      // 저장된 토큰 가져오기
+      const userToken = await AsyncStorage.getItem('userToken');
+      const result = await getMemos(1, 20, userToken); // 첫 페이지, 20개씩
       
-      if (result.success && result.data.memos) {
-        setMemos(result.data.memos);
+      if (result.success && result.data) {
+        setMemos(result.data);
       } else {
         setError('메모 목록을 가져올 수 없습니다.');
       }
-    } catch (error) {
-      setError(`메모 목록 조회 실패: ${error.message}`);
-      Alert.alert('오류', error.message);
-    } finally {
+         } catch (error) {
+       setError(`메모 목록 조회 실패: ${error.message}`);
+     } finally {
       setIsLoading(false);
     }
   };
@@ -69,7 +72,7 @@ export default function AllMemo() {
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={fetchMemos}>
-          <Text style={styles.retryButtonText}>다시 시도</Text>
+          <AntDesign name="reload1" size={24} color="black" />
         </TouchableOpacity>
       </View>
     );
@@ -79,8 +82,7 @@ export default function AllMemo() {
     <ScrollView contentContainerStyle={styles.memoList}>
       {memos.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>저장된 메모가 없습니다.</Text>
-          <Text style={styles.emptySubText}>새로운 메모를 작성해보세요!</Text>
+          <Text style={styles.emptyText}>메모가 없습니다</Text>
         </View>
       ) : (
         memos.map((memo) => (
@@ -95,8 +97,8 @@ export default function AllMemo() {
             <Text style={styles.location}>
               {memo.location?.address || '위치 없음'} | {formatDate(memo.createdAt)}
             </Text>
-            <Text style={styles.content}>
-              {memo.content.length > 50 ? `${memo.content.substring(0, 50)}...` : memo.content}
+            <Text style={styles.content} numberOfLines={2}>
+              {memo.content}
             </Text>
             <Text style={styles.publicStatus}>
               {memo.isPublic ? '공개' : '비공개'}
@@ -163,19 +165,12 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#FF3B30',
+    color: '#666',
     textAlign: 'center',
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    padding: 10,
   },
   emptyContainer: {
     flex: 1,
@@ -186,10 +181,5 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     color: '#666',
-    marginBottom: 8,
-  },
-  emptySubText: {
-    fontSize: 14,
-    color: '#999',
   },
 });

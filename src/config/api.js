@@ -4,14 +4,14 @@ export const API_CONFIG = {
   development: {
     baseURL: 'https://dco69dhctdpt.cloudfront.net/api',
     mapBoundsEndpoint: 'https://dco69dhctdpt.cloudfront.net/api/map-bounds',
-    memosEndpoint: 'https://dco69dhctdpt.cloudfront.net/api/memo',
+    memosEndpoint: 'https://dco69dhctdpt.cloudfront.net/api/memo/',
   },
   
   // 프로덕션 환경 (새로운 백엔드 서버)
   production: {
     baseURL: 'https://dco69dhctdpt.cloudfront.net/api',
     mapBoundsEndpoint: 'https://dco69dhctdpt.cloudfront.net/api/map-bounds',
-    memosEndpoint: 'https://dco69dhctdpt.cloudfront.net/api/memo',
+    memosEndpoint: 'https://dco69dhctdpt.cloudfront.net/api/memo/',
   }
 };
 
@@ -69,14 +69,18 @@ export const sendMapBoundsToBackend = async (bounds, userToken = null) => {
 };
 
 // 메모 생성 함수 (API 명세서에 맞춤)
-export const createMemo = async (memoData, userToken = 'test-token') => {
+export const createMemo = async (memoData, userToken = null) => {
   const config = getApiConfig();
   
   try {
     const headers = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${userToken}`,
     };
+    
+    // 토큰이 있을 때만 Authorization 헤더 추가
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+    }
 
     const response = await fetch(config.memosEndpoint, {
       method: 'POST',
@@ -85,8 +89,39 @@ export const createMemo = async (memoData, userToken = 'test-token') => {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('❌ 서버 에러 응답:', errorData);
+        console.error('❌ 에러 상세 정보:', JSON.stringify(errorData, null, 2));
+        
+        // 에러 메시지 추출 로직 개선
+        if (errorData.detail) {
+          if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail.map(err => err.msg || err.message || 'Validation error').join(', ');
+          } else {
+            errorMessage = errorData.detail;
+          }
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else {
+          errorMessage = JSON.stringify(errorData);
+        }
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          console.error('❌ 서버 텍스트 응답:', errorText);
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();
@@ -101,14 +136,18 @@ export const createMemo = async (memoData, userToken = 'test-token') => {
 };
 
 // 메모 목록 조회 함수
-export const getMemos = async (page = 1, limit = 10, userToken = 'test-token') => {
+export const getMemos = async (page = 1, limit = 10, userToken = null) => {
   const config = getApiConfig();
   
   try {
     const headers = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${userToken}`,
     };
+    
+    // 토큰이 있을 때만 Authorization 헤더 추가
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+    }
 
     const response = await fetch(`${config.memosEndpoint}?page=${page}&limit=${limit}`, {
       method: 'GET',
@@ -116,8 +155,23 @@ export const getMemos = async (page = 1, limit = 10, userToken = 'test-token') =
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('❌ 서버 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();
@@ -140,7 +194,7 @@ export const getMemoById = async (memoId, userToken = 'test-token') => {
       'Authorization': `Bearer ${userToken}`,
     };
 
-    const response = await fetch(`${config.memosEndpoint}/${memoId}`, {
+    const response = await fetch(`${config.memosEndpoint}${memoId}`, {
       method: 'GET',
       headers,
     });
@@ -155,7 +209,7 @@ export const getMemoById = async (memoId, userToken = 'test-token') => {
     return result;
   } catch (error) {
     console.error('❌ 메모 상세 조회 실패:', error.message);
-    console.error('🔗 API 엔드포인트:', `${config.memosEndpoint}/${memoId}`);
+    console.error('🔗 API 엔드포인트:', `${config.memosEndpoint}${memoId}`);
     throw error;
   }
 };
@@ -191,25 +245,70 @@ export const deleteMemo = async (memoId, userToken = 'test-token') => {
   }
 };
 
-// 메모 수정 함수 (API 명세서에 맞춤)
-export const updateMemo = async (memoId, updateData, userToken = 'test-token') => {
+// 메모 수정 함수 (새로운 API 명세서에 맞춤)
+export const updateMemo = async (memoId, updateData, userToken = null) => {
   const config = getApiConfig();
   
   try {
+    console.log('🔧 updateMemo 함수 시작');
+    console.log('📝 memoId:', memoId);
+    console.log('📝 updateData:', JSON.stringify(updateData, null, 2));
+    console.log('🔑 userToken:', userToken ? '토큰 있음' : '토큰 없음');
+    
     const headers = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${userToken}`,
     };
+    
+    // 토큰이 있을 때만 Authorization 헤더 추가
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+    }
 
-    const response = await fetch(`${config.memosEndpoint}/${memoId}`, {
-      method: 'PUT',
+    const url = `${config.baseURL}/memo/update/${memoId}`;
+    console.log('🔗 요청 URL:', url);
+    console.log('🔗 요청 메서드:', 'POST');
+    console.log('🔗 요청 헤더:', JSON.stringify(headers, null, 2));
+
+    const response = await fetch(url, {
+      method: 'POST',
       headers,
       body: JSON.stringify(updateData)
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('❌ 서버 에러 응답:', errorData);
+        console.error('❌ 에러 상세 정보:', JSON.stringify(errorData, null, 2));
+        
+        // 에러 메시지 추출 로직 개선
+        if (errorData.detail) {
+          if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail.map(err => err.msg || err.message || 'Validation error').join(', ');
+          } else {
+            errorMessage = errorData.detail;
+          }
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else {
+          errorMessage = JSON.stringify(errorData);
+        }
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          console.error('❌ 서버 텍스트 응답:', errorText);
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();
@@ -218,7 +317,7 @@ export const updateMemo = async (memoId, updateData, userToken = 'test-token') =
     return result;
   } catch (error) {
     console.error('❌ 메모 수정 실패:', error.message);
-    console.error('🔗 API 엔드포인트:', `${config.memosEndpoint}/${memoId}`);
+    console.error('🔗 API 엔드포인트:', `${config.baseURL}/memo/update/${memoId}`);
     throw error;
   }
 };
