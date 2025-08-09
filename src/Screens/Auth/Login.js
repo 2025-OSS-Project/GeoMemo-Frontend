@@ -59,6 +59,7 @@ export default function Login() {
       <Text style={styles.label}>E-mail</Text>
       <TextInput
         placeholder="email@email.com"
+        placeholderTextColor="#999"
         style={styles.input}
         value={email}
         onChangeText={setEmail}
@@ -70,6 +71,7 @@ export default function Login() {
       <Text style={styles.label}>비밀번호</Text>
       <TextInput
         placeholder="비밀번호"
+        placeholderTextColor="#999"
         style={styles.input}
         value={password}
         onChangeText={setPassword}
@@ -133,6 +135,8 @@ const styles = StyleSheet.create({
   label: {
     marginBottom: 4,
     fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
   },
   input: {
     borderWidth: 1,
@@ -140,6 +144,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
   },
   loginButton: {
     backgroundColor: '#111',

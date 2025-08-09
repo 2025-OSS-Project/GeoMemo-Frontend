@@ -1,12 +1,10 @@
 // components/MapSection.js
 import React from 'react';
 import MapView, { Marker } from 'react-native-maps';
-import { Text, Animated } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Text } from 'react-native';
 
 export default function MapSection({
   location,
-  heading,
   mapRef,
   memos,
   filter,
@@ -19,6 +17,7 @@ export default function MapSection({
     <MapView
       ref={mapRef}
       style={{ flex: 1 }}
+      provider="google"
       mapType="standard"
       showsUserLocation={true}
       showsMyLocationButton={false}
@@ -32,19 +31,6 @@ export default function MapSection({
         longitudeDelta: 0.01,
       }}
     >
-      {/* 내 방향 마커 */}
-      <Marker
-        coordinate={{
-          latitude: location.latitude,
-          longitude: location.longitude,
-        }}
-        anchor={{ x: 0.5, y: 0.5 }}
-      >
-        <Animated.View style={{ transform: [{ rotate: `${heading}deg` }] }}>
-          <MaterialCommunityIcons name="navigation" size={20} color="#6ad86aff" />
-        </Animated.View>
-      </Marker>
-
       {/* 메모 마커 */}
       {memos
         .filter(memo => {

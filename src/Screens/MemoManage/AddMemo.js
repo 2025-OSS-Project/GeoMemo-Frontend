@@ -191,6 +191,7 @@ export default function AddMemo() {
             <Text style={styles.timeBox}>{formatCurrentTime()}</Text>
             <TextInput
               placeholder="제목을 입력하세요"
+              placeholderTextColor="#999"
               value={title}
               onChangeText={setTitle}
               style={styles.titleInput}
@@ -201,6 +202,7 @@ export default function AddMemo() {
           <View style={styles.inputRow}>
             <TextInput
               placeholder="위치를 입력하세요"
+              placeholderTextColor="#999"
               value={location}
               onChangeText={setLocation}
               style={styles.locationInput}
@@ -208,6 +210,7 @@ export default function AddMemo() {
             />
             <TextInput
               placeholder="카테고리를 입력하세요"
+              placeholderTextColor="#999"
               value={category}
               onChangeText={setCategory}
               style={styles.categoryInput}
@@ -232,6 +235,7 @@ export default function AddMemo() {
             value={content}
             onChangeText={handleContentChange}
             placeholder="메모를 입력하세요"
+            placeholderTextColor="#999"
             returnKeyType="default"
             blurOnSubmit={false}
             textAlignVertical="top"
@@ -321,6 +325,8 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     marginBottom: 20,
     fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
   },
   footer: {
     flexDirection: 'row',
