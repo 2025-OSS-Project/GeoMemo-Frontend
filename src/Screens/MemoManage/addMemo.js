@@ -55,7 +55,13 @@ export default function AddMemo() {
   // 현재 시간을 포맷팅하는 함수
   const formatCurrentTime = () => {
     const now = new Date();
-    return now.toISOString();
+    return now.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   // 현재 위치 가져오기
