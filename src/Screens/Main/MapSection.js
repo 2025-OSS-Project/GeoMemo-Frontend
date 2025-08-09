@@ -19,7 +19,6 @@ export default function MapSection({
     <MapView
       ref={mapRef}
       style={{ flex: 1 }}
-      provider="google"
       mapType="standard"
       showsUserLocation={true}
       showsMyLocationButton={false}

@@ -12,7 +12,7 @@ import AllMemoView from '../Screens/MemoManage/AllMemoView'
 import MyProfile from '../Screens/Profile/MyProfile'
 import OtherProfile from '../Screens/Profile/OtherProfile'
 import MemoView from '../Screens/Profile/MemoView'
-import SettingsHome from '../Screens/Setting/SettingsHome'
+import SettingsHome from '../Screens/Setting/SettingsHome';
 import EditProfile from '../Screens/Setting/EditProfile'
 import ChangeNickname from '../Screens/Setting/ChangeNickname'
 import ChangePassword from '../Screens/Setting/ChangePassword'
