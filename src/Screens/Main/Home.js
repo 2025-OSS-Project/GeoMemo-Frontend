@@ -33,6 +33,23 @@ export default function Home() {
   const [myUser, setMyUser] = useState(null);
   const [followingIds, setFollowingIds] = useState([]);
 
+  // 스피너 애니메이션을 위한 Animated Value
+  const spinValue = useRef(new Animated.Value(0)).current;
+
+  // 스피너 회전 애니메이션 시작
+  useEffect(() => {
+    const spinAnimation = Animated.loop(
+      Animated.timing(spinValue, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      })
+    );
+    spinAnimation.start();
+
+    return () => spinAnimation.stop();
+  }, [spinValue]);
+
   // memoView 사용을 위한 state
   const [selectedMemo, setSelectedMemo] = useState(null);
   const exampleMemo = {
@@ -211,7 +228,21 @@ export default function Home() {
           />
         </>
       ) : (
-        <Text style={{ padding: 20, margin: 'auto'}}>지도 제작 중...</Text>
+        <View style={styles.loadingContainer}>
+          <Animated.View
+            style={{
+              transform: [{
+                rotate: spinValue.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0deg', '360deg'],
+                }),
+              }],
+            }}
+          >
+            <FontAwesome name="spinner" size={24} color="black" />
+          </Animated.View>
+          <Text style={styles.loadingText}>지도 제작 중...</Text>
+        </View>
       )}
     </View>
   );
@@ -287,5 +318,17 @@ const styles = StyleSheet.create({
   memoUserName: {
     fontSize: 12,
     color: '#666',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: '#333',
+    marginTop: 16,
   },
 });
