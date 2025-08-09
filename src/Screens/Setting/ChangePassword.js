@@ -24,12 +24,14 @@ export default function ChangePassword() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // 비밀번호 유효성 검사
   const validatePassword = (password) => {
-    // 최소 8자, 영문, 숫자, 특수문자 포함
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
-    return passwordRegex.test(password);
+    // 최소 6자
+    return password.length >= 6;
   };
 
   // 비밀번호 변경 처리 함수
@@ -54,7 +56,7 @@ export default function ChangePassword() {
     if (!validatePassword(newPassword)) {
       Alert.alert(
         '알림', 
-        '비밀번호는 8자 이상이며, 영문, 숫자, 특수문자를 포함해야 합니다.'
+        '비밀번호는 6자 이상이어야 합니다.'
       );
       return;
     }
@@ -131,43 +133,79 @@ export default function ChangePassword() {
 
           {/* 현재 비밀번호 */}
           <Text style={styles.inputLabel}>현재 비밀번호</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="현재 비밀번호를 입력하세요"
-            placeholderTextColor="#aaa"
-            secureTextEntry
-            value={currentPassword}
-            onChangeText={setCurrentPassword}
-            editable={!isLoading}
-            returnKeyType="next"
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="현재 비밀번호를 입력하세요"
+              placeholderTextColor="#aaa"
+              secureTextEntry={!showCurrentPassword}
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              editable={!isLoading}
+              returnKeyType="next"
+            />
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+            >
+              <Ionicons
+                name={showCurrentPassword ? "eye-off" : "eye"}
+                size={20}
+                color="#666"
+              />
+            </TouchableOpacity>
+          </View>
 
           {/* 새 비밀번호 */}
           <Text style={styles.inputLabel}>새 비밀번호</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="새 비밀번호를 입력하세요"
-            placeholderTextColor="#aaa"
-            secureTextEntry
-            value={newPassword}
-            onChangeText={setNewPassword}
-            editable={!isLoading}
-            returnKeyType="next"
-          />
-          <Text style={styles.passwordHint}>8자 이상, 영문, 숫자, 특수문자 포함</Text>
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="새 비밀번호를 입력하세요"
+              placeholderTextColor="#aaa"
+              secureTextEntry={!showNewPassword}
+              value={newPassword}
+              onChangeText={setNewPassword}
+              editable={!isLoading}
+              returnKeyType="next"
+            />
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={() => setShowNewPassword(!showNewPassword)}
+            >
+              <Ionicons
+                name={showNewPassword ? "eye-off" : "eye"}
+                size={20}
+                color="#666"
+              />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.passwordHint}>6자 이상</Text>
 
           {/* 새 비밀번호 확인 */}
           <Text style={styles.inputLabel}>새 비밀번호 확인</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="새 비밀번호를 다시 입력하세요"
-            placeholderTextColor="#aaa"
-            secureTextEntry
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            editable={!isLoading}
-            returnKeyType="done"
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="새 비밀번호를 다시 입력하세요"
+              placeholderTextColor="#aaa"
+              secureTextEntry={!showConfirmPassword}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              editable={!isLoading}
+              returnKeyType="done"
+            />
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              <Ionicons
+                name={showConfirmPassword ? "eye-off" : "eye"}
+                size={20}
+                color="#666"
+              />
+            </TouchableOpacity>
+          </View>
 
           {/* 저장 버튼 */}
           <TouchableOpacity 
@@ -229,6 +267,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 15,
     marginBottom: 20,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f2f2f2',
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    fontSize: 15,
+  },
+  eyeButton: {
+    paddingHorizontal: 15,
+    paddingVertical: 14,
   },
   passwordHint: {
     fontSize: 12,

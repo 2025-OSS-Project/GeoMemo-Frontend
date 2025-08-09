@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { signUp } from '../../config/api';
 
 export default function SignUp() {
@@ -12,6 +13,8 @@ export default function SignUp() {
   const [nickname, setNickname] = useState('');
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSignUp = async () => {
     // 입력값 검증
@@ -87,24 +90,48 @@ export default function SignUp() {
           />
 
           <Text style={styles.label}>비밀번호</Text>
-          <TextInput 
-            style={styles.input} 
-            placeholder="비밀번호" 
-            secureTextEntry 
-            value={password}
-            onChangeText={setPassword}
-            returnKeyType="next"
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput 
+              style={styles.passwordInput} 
+              placeholder="비밀번호 (6자 이상)" 
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+              returnKeyType="next"
+            />
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Ionicons
+                name={showPassword ? "eye-off" : "eye"}
+                size={20}
+                color="#666"
+              />
+            </TouchableOpacity>
+          </View>
 
           <Text style={styles.label}>비밀번호 확인</Text>
-          <TextInput 
-            style={styles.input} 
-            placeholder="비밀번호 확인" 
-            secureTextEntry 
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            returnKeyType="next"
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput 
+              style={styles.passwordInput} 
+              placeholder="비밀번호 확인" 
+              secureTextEntry={!showConfirmPassword}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              returnKeyType="next"
+            />
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              <Ionicons
+                name={showConfirmPassword ? "eye-off" : "eye"}
+                size={20}
+                color="#666"
+              />
+            </TouchableOpacity>
+          </View>
 
           <Text style={styles.label}>이름</Text>
           <TextInput 
@@ -187,6 +214,23 @@ const styles = StyleSheet.create({
     padding: 12,
     marginTop: 6,
     fontSize: 14,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    marginTop: 6,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 12,
+    fontSize: 14,
+  },
+  eyeButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
   button: {
     marginTop: 32,
