@@ -94,9 +94,14 @@ export default function AllMemo() {
                                      <Text style={styles.title}>
               {memo.title || '제목 없음'}
             </Text>
-            <Text style={styles.location}>
-              {memo.location?.address || '위치 없음'} | {formatDate(memo.createdAt)}
-            </Text>
+            <View style={styles.timeLocationContainer}>
+              <Text style={styles.timeText}>
+                {formatDate(memo.createdAt)}
+              </Text>
+              <Text style={styles.location} numberOfLines={1} ellipsizeMode="tail">
+                {memo.location?.address || '위치 없음'}
+              </Text>
+            </View>
             <Text style={styles.content} numberOfLines={2}>
               {memo.content}
             </Text>
@@ -132,10 +137,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 4,
   },
+  timeLocationContainer: {
+    marginBottom: 4,
+  },
+  timeText: {
+    fontSize: 11,
+    color: '#999',
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
   location: {
     fontSize: 12,
     color: '#888',
-    marginBottom: 4,
   },
   content: {
     fontSize: 14,

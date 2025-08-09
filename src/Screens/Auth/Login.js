@@ -37,7 +37,7 @@ export default function Login() {
       if (result.access_token) {
         // 로그인 성공 - 토큰을 AsyncStorage에 저장
         await AsyncStorage.setItem('userToken', result.access_token);
-        console.log('✅ 로그인 성공! 토큰 저장됨:', result.access_token);
+        console.log('로그인 성공! 토큰 저장됨:', result.access_token);
         Alert.alert('성공', '로그인되었습니다!', [
           { text: '확인', onPress: () => navigation.navigate('MemoMap') }
         ]);
@@ -59,6 +59,7 @@ export default function Login() {
       <Text style={styles.label}>E-mail</Text>
       <TextInput
         placeholder="email@email.com"
+        placeholderTextColor="#999"
         style={styles.input}
         value={email}
         onChangeText={setEmail}
@@ -70,6 +71,7 @@ export default function Login() {
       <Text style={styles.label}>비밀번호</Text>
       <TextInput
         placeholder="비밀번호"
+        placeholderTextColor="#999"
         style={styles.input}
         value={password}
         onChangeText={setPassword}
@@ -133,6 +135,8 @@ const styles = StyleSheet.create({
   label: {
     marginBottom: 4,
     fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
   },
   input: {
     borderWidth: 1,
@@ -140,6 +144,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000',
   },
   loginButton: {
     backgroundColor: '#111',

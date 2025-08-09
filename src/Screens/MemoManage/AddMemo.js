@@ -70,11 +70,16 @@ export default function AddMemo() {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('위치 권한', '위치 정보를 사용할 수 없습니다.');
+          Alert.alert('위치 권한 필요', '위치 정보를 사용하려면 권한이 필요합니다. 설정에서 위치 권한을 허용해주세요.');
+          setLocationName('위치 권한 없음');
           return;
         }
 
-        const location = await Location.getCurrentPositionAsync({});
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+          timeout: 15000,
+          maximumAge: 10000,
+        });
         setCurrentLocation(location);
         
         // 위치 정보로 주소 가져오기
@@ -85,13 +90,34 @@ export default function AddMemo() {
         
         if (addressResponse.length > 0) {
           const address = addressResponse[0];
-          const locationNameStr = `${address.city || ''} ${address.district || ''} ${address.street || ''}`.trim();
+          // 더 상세한 주소 정보 구성
+          const addressParts = [
+            address.country,
+            address.region,
+            address.city,
+            address.district,
+            address.street,
+            address.name
+          ].filter(part => part && part.trim() !== '');
+          
+          const locationNameStr = addressParts.join(' ').trim();
+          
           if (locationNameStr) {
             setLocationName(locationNameStr);
+          } else {
+            // 주소 정보가 없으면 좌표로 대체
+            const coordStr = `위도: ${location.coords.latitude.toFixed(6)}, 경도: ${location.coords.longitude.toFixed(6)}`;
+            setLocationName(coordStr);
           }
+        } else {
+          // 주소 변환 실패 시 좌표 정보 사용
+          const coordStr = `위도: ${location.coords.latitude.toFixed(6)}, 경도: ${location.coords.longitude.toFixed(6)}`;
+          setLocationName(coordStr);
         }
       } catch (error) {
         console.log('위치 정보 가져오기 실패:', error);
+        setLocationName('위치 정보 오류');
+        Alert.alert('위치 오류', '위치 정보를 가져올 수 없습니다. GPS가 켜져있는지 확인해주세요.');
       }
     };
 
@@ -116,14 +142,19 @@ export default function AddMemo() {
         location_name: location.trim() || '위치 없음',
         location_latitude: currentLocation?.coords?.latitude || 37.5665,
         location_longitude: currentLocation?.coords?.longitude || 126.9780,
-        location_address: locationName || '위치 정보 없음',
+        location_address: locationName && locationName !== '위치 권한 없음' && locationName !== '위치 정보 오류' ? locationName : (currentLocation ? `위도: ${currentLocation.coords.latitude.toFixed(6)}, 경도: ${currentLocation.coords.longitude.toFixed(6)}` : '위치 정보 없음'),
         location_category: category.trim() || '기타',
         file_url: ""
       };
 
+      console.log('POST /api/memo/');
+      console.log('Request Body:', JSON.stringify(memoData, null, 2));
+
       // 저장된 토큰 가져오기
       const userToken = await AsyncStorage.getItem('userToken');
+      
       const result = await createMemo(memoData, userToken);
+      console.log('Response:', JSON.stringify(result, null, 2));
       
       Alert.alert('성공', '메모가 성공적으로 저장되었습니다.', [
         { text: '확인', onPress: () => navigation.goBack() }
@@ -160,6 +191,7 @@ export default function AddMemo() {
             <Text style={styles.timeBox}>{formatCurrentTime()}</Text>
             <TextInput
               placeholder="제목을 입력하세요"
+              placeholderTextColor="#999"
               value={title}
               onChangeText={setTitle}
               style={styles.titleInput}
@@ -170,6 +202,7 @@ export default function AddMemo() {
           <View style={styles.inputRow}>
             <TextInput
               placeholder="위치를 입력하세요"
+              placeholderTextColor="#999"
               value={location}
               onChangeText={setLocation}
               style={styles.locationInput}
@@ -177,11 +210,22 @@ export default function AddMemo() {
             />
             <TextInput
               placeholder="카테고리를 입력하세요"
+              placeholderTextColor="#999"
               value={category}
               onChangeText={setCategory}
               style={styles.categoryInput}
               returnKeyType="next"
             />
+          </View>
+          
+          {/* 현재 위치 상태 표시 */}
+          <View style={styles.locationStatus}>
+            <Text style={styles.locationStatusText}>
+              현재 주소: {currentLocation ? 
+                (locationName || '주소 변환 중...') : 
+                '위치 정보 가져오는 중...'
+              }
+            </Text>
           </View>
 
           <TextInput
@@ -191,6 +235,7 @@ export default function AddMemo() {
             value={content}
             onChangeText={handleContentChange}
             placeholder="메모를 입력하세요"
+            placeholderTextColor="#999"
             returnKeyType="default"
             blurOnSubmit={false}
             textAlignVertical="top"
@@ -280,6 +325,8 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     marginBottom: 20,
     fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
   },
   footer: {
     flexDirection: 'row',
@@ -299,5 +346,18 @@ const styles = StyleSheet.create({
   },
   disabledBtn: {
     backgroundColor: '#999',
+  },
+  locationStatus: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#f8f8f8',
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginBottom: 10,
+  },
+  locationStatusText: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
   },
 });

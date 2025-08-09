@@ -20,7 +20,13 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.hyeongwon.GeoMemoFrontend",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyA-tR6iHp44OT7wa4Lx4Htdi1BqQx_okNM"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png",

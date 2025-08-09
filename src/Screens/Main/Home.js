@@ -33,6 +33,23 @@ export default function Home() {
   const [myUser, setMyUser] = useState(null);
   const [followingIds, setFollowingIds] = useState([]);
 
+  // 스피너 애니메이션을 위한 Animated Value
+  const spinValue = useRef(new Animated.Value(0)).current;
+
+  // 스피너 회전 애니메이션 시작
+  useEffect(() => {
+    const spinAnimation = Animated.loop(
+      Animated.timing(spinValue, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      })
+    );
+    spinAnimation.start();
+
+    return () => spinAnimation.stop();
+  }, [spinValue]);
+
   // memoView 사용을 위한 state
   const [selectedMemo, setSelectedMemo] = useState(null);
   const exampleMemo = {
@@ -74,13 +91,47 @@ export default function Home() {
     return await response.json();
   };
 
-  const toggleRouteBox = () => {
-    Animated.timing(routeSlideAnim, {
-      toValue: routeVisible ? -200 : 20,
-      duration: 300,
-      useNativeDriver: false,
-    }).start(() => setRouteVisible(!routeVisible));
-  };
+
+
+  const routePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // 더 엄격한 조건: 최소 20px 이상 가로로 움직여야 함
+        return Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+      },
+      onPanResponderGrant: () => {
+        // 드래그 시작할 때만 반응
+      },
+      onPanResponderMove: (_, gesture) => {
+        // 최소 이동 거리 체크
+        if (Math.abs(gesture.dx) > 20) {
+          // 현재 패널이 열려있는지 확인
+          const currentValue = routeSlideAnim._value;
+          let newValue;
+          
+          if (currentValue > -100) {
+            // 패널이 열려있을 때 - 오른쪽에서 왼쪽으로 드래그하면 닫힘
+            newValue = Math.max(-200, Math.min(20, 20 + gesture.dx));
+          } else {
+            // 패널이 닫혀있을 때 - 왼쪽에서 오른쪽으로 드래그하면 열림
+            newValue = Math.max(-200, Math.min(20, gesture.dx - 200));
+          }
+          
+          routeSlideAnim.setValue(newValue);
+        }
+      },
+      onPanResponderRelease: (_, gesture) => {
+        // 더 엄격한 조건: 최소 80px 이상 드래그하거나 빠른 속도로 드래그해야 함
+        const shouldOpen = (gesture.dx > 80 && gesture.vx > -0.5) || gesture.vx > 1.0;
+        Animated.timing(routeSlideAnim, {
+          toValue: shouldOpen ? 20 : -200,
+          duration: shouldOpen ? 300 : 500, // 열릴 때: 300ms, 닫힐 때: 500ms
+          useNativeDriver: false,
+        }).start(() => setRouteVisible(shouldOpen));
+      },
+    })
+  ).current;
 
   const openGoogleMapsToDestination = () => {
     const latitude = 37.5665;
@@ -118,10 +169,42 @@ export default function Home() {
 
   useEffect(() => {
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
-      const loc = await Location.getCurrentPositionAsync({});
-      setLocation(loc.coords);
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          console.log('위치 권한이 거부되었습니다.');
+          return;
+        }
+        
+        // 초기 위치 가져오기
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+          timeout: 10000,
+          maximumAge: 60000,
+        });
+        setLocation(loc.coords);
+
+        // 위치 변화 감지 (더 안정적인 업데이트)
+        const locationSubscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.Balanced,
+            timeInterval: 5000, // 5초마다 업데이트
+            distanceInterval: 10, // 10미터 이동시 업데이트
+          },
+          (newLocation) => {
+            setLocation(newLocation.coords);
+          }
+        );
+
+        // 컴포넌트 언마운트시 구독 해제
+        return () => {
+          if (locationSubscription) {
+            locationSubscription.remove();
+          }
+        };
+      } catch (error) {
+        console.log('위치 정보 가져오기 실패:', error);
+      }
     })();
 
     const subscription = Magnetometer.addListener((data) => {
@@ -178,15 +261,11 @@ export default function Home() {
 
           <RouteBox
             routeSlideAnim={routeSlideAnim}
+            routePanResponder={routePanResponder}
             destination={destination}
           />
 
-          <TouchableOpacity
-            style={styles.routeToggleBtn}
-            onPress={toggleRouteBox}
-          >
-            <Ionicons name={routeVisible ? "chevron-back" : "chevron-forward"} size={24} color="black" />
-          </TouchableOpacity>
+
 
           <TouchableOpacity style={styles.myMemoManage} onPress={() => navigation.navigate('MemoManager')}>
             <FontAwesome name="navicon" size={24} color="black" />
@@ -211,7 +290,21 @@ export default function Home() {
           />
         </>
       ) : (
-        <Text style={{ padding: 20, margin: 'auto'}}>지도 제작 중...</Text>
+        <View style={styles.loadingContainer}>
+          <Animated.View
+            style={{
+              transform: [{
+                rotate: spinValue.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0deg', '360deg'],
+                }),
+              }],
+            }}
+          >
+            <FontAwesome name="spinner" size={24} color="black" />
+          </Animated.View>
+          <Text style={styles.loadingText}>지도 제작 중...</Text>
+        </View>
       )}
     </View>
   );
@@ -232,16 +325,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  routeToggleBtn: {
-    position: 'absolute',
-    top: 120,
-    left: 10,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 8,
-    elevation: 5,
-    zIndex: 15,
-  },
+
   myMemoManage: {
     position: 'absolute',
     top: 150,
@@ -287,5 +371,17 @@ const styles = StyleSheet.create({
   memoUserName: {
     fontSize: 12,
     color: '#666',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: '#333',
+    marginTop: 16,
   },
 });

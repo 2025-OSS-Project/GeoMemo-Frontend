@@ -138,12 +138,12 @@ export default function AllMemoView() {
         new_photo_urls: [] // 새로운 사진 없음
       };
       
-      console.log('📡 서버로 전송할 데이터:', JSON.stringify(updateData, null, 2));
-      console.log('🔗 API 엔드포인트:', `PUT ${memo.memoId}`);
+      console.log('서버로 전송할 데이터:', JSON.stringify(updateData, null, 2));
+      console.log('API 엔드포인트:', `PUT ${memo.memoId}`);
       
       const result = await updateMemo(memo.memoId, updateData, userToken);
       
-      console.log('✅ 서버 응답:', JSON.stringify(result, null, 2));
+      console.log('서버 응답:', JSON.stringify(result, null, 2));
       
       // 업데이트된 메모 데이터로 상태 업데이트
       if (result.success && result.data) {
@@ -156,9 +156,9 @@ export default function AllMemoView() {
       setIsEditing(false);
       Alert.alert('성공', '메모가 수정되었습니다.');
     } catch (error) {
-      console.error('❌ 메모 수정 오류:', error);
-      console.error('❌ 오류 상세:', error.message);
-      console.error('❌ 오류 스택:', error.stack);
+      console.error('메모 수정 오류:', error);
+      console.error('오류 상세:', error.message);
+      console.error('오류 스택:', error.stack);
       Alert.alert('오류', `메모 수정에 실패했습니다: ${error.message}`);
     } finally {
       setIsUpdating(false);
@@ -198,9 +198,16 @@ export default function AllMemoView() {
             )}
           </View>
           
-          {/* 장소|시간 */}
-          <View style={styles.inputRow}>
-            <Text style={styles.timeBox}>{memo.location?.address || '위치 없음'} | {formatDate(memo.createdAt)}</Text>
+          {/* 시간|장소 */}
+          <View style={styles.locationTimeRow}>
+            <View style={styles.timeLocationContainer}>
+              <Text style={styles.timeBox}>
+                {formatDate(memo.createdAt)}
+              </Text>
+              <Text style={styles.locationBox} numberOfLines={1} ellipsizeMode="tail">
+                {memo.location?.address || '위치 없음'}
+              </Text>
+            </View>
           </View>
 
           {/* 내용 */}
@@ -297,13 +304,28 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   inputRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  locationTimeRow: {
+    marginBottom: 10,
+  },
+  timeLocationContainer: {
+    backgroundColor: '#f5f5f5',
+    padding: 8,
+    borderRadius: 6,
+  },
   timeBox: {
     backgroundColor: '#999',
     paddingHorizontal: 8,
     paddingVertical: 4,
     color: '#fff',
     borderRadius: 4,
-    marginRight: 8,
+    fontSize: 12,
+    marginBottom: 4,
+    alignSelf: 'flex-start',
+  },
+  locationBox: {
+    fontSize: 12,
+    color: '#666',
+    paddingHorizontal: 4,
   },
   titleText: {
     flex: 1,
