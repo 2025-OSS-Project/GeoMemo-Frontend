@@ -135,10 +135,22 @@ export default function Home() {
 
   useEffect(() => {
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
-      const loc = await Location.getCurrentPositionAsync({});
-      setLocation(loc.coords);
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          console.log('위치 권한이 거부되었습니다.');
+          return;
+        }
+        
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+          timeout: 15000,
+          maximumAge: 10000,
+        });
+        setLocation(loc.coords);
+      } catch (error) {
+        console.log('위치 정보 가져오기 실패:', error);
+      }
     })();
 
     const subscription = Magnetometer.addListener((data) => {

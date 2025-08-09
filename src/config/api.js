@@ -82,11 +82,16 @@ export const createMemo = async (memoData, userToken = null) => {
       headers['Authorization'] = `Bearer ${userToken}`;
     }
 
+    console.log('API Call:', config.memosEndpoint);
+    console.log('Headers:', headers);
+
     const response = await fetch(config.memosEndpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify(memoData)
     });
+
+    console.log('Status:', response.status, response.statusText);
 
     if (!response.ok) {
       let errorMessage = `HTTP error! status: ${response.status}`;
@@ -125,8 +130,7 @@ export const createMemo = async (memoData, userToken = null) => {
     }
 
     const result = await response.json();
-    console.log('✅ 메모 생성 성공!');
-    console.log('📡 서버 응답:', result);
+    console.log('Success Response:', JSON.stringify(result, null, 2));
     return result;
   } catch (error) {
     console.error('❌ 메모 생성 실패:', error.message);

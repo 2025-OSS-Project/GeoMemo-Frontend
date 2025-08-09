@@ -198,9 +198,16 @@ export default function AllMemoView() {
             )}
           </View>
           
-          {/* 장소|시간 */}
-          <View style={styles.inputRow}>
-            <Text style={styles.timeBox}>{memo.location?.address || '위치 없음'} | {formatDate(memo.createdAt)}</Text>
+          {/* 시간|장소 */}
+          <View style={styles.locationTimeRow}>
+            <View style={styles.timeLocationContainer}>
+              <Text style={styles.timeBox}>
+                {formatDate(memo.createdAt)}
+              </Text>
+              <Text style={styles.locationBox} numberOfLines={1} ellipsizeMode="tail">
+                {memo.location?.address || '위치 없음'}
+              </Text>
+            </View>
           </View>
 
           {/* 내용 */}
@@ -297,13 +304,28 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   inputRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  locationTimeRow: {
+    marginBottom: 10,
+  },
+  timeLocationContainer: {
+    backgroundColor: '#f5f5f5',
+    padding: 8,
+    borderRadius: 6,
+  },
   timeBox: {
     backgroundColor: '#999',
     paddingHorizontal: 8,
     paddingVertical: 4,
     color: '#fff',
     borderRadius: 4,
-    marginRight: 8,
+    fontSize: 12,
+    marginBottom: 4,
+    alignSelf: 'flex-start',
+  },
+  locationBox: {
+    fontSize: 12,
+    color: '#666',
+    paddingHorizontal: 4,
   },
   titleText: {
     flex: 1,
