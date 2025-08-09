@@ -11,7 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { deleteAccount } from '../../config/Api';
+import { deleteAccount } from '../../config/api';
 
 const { width, height } = Dimensions.get('window');
 

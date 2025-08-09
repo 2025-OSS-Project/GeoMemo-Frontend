@@ -15,7 +15,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Entypo } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createMemo } from '../../config/Api';
+import { createMemo } from '../../config/api';
 import * as Location from 'expo-location';
 
 export default function AddMemo() {

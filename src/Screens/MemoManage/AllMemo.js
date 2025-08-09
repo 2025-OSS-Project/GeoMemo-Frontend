@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getMemos } from '../../config/Api';
+import { getMemos } from '../../config/api';
 import { AntDesign } from '@expo/vector-icons';
 
 export default function AllMemo() {
