@@ -112,10 +112,10 @@ export default function Home() {
           
           if (currentValue > -100) {
             // 패널이 열려있을 때 - 오른쪽에서 왼쪽으로 드래그하면 닫힘
-            newValue = Math.max(-200, Math.min(20, 20 + gesture.dx));
+            newValue = Math.max(-200, Math.min(0, gesture.dx));
           } else {
             // 패널이 닫혀있을 때 - 왼쪽에서 오른쪽으로 드래그하면 열림
-            newValue = Math.max(-200, Math.min(20, gesture.dx - 200));
+            newValue = Math.max(-200, Math.min(0, gesture.dx - 200));
           }
           
           routeSlideAnim.setValue(newValue);
@@ -125,7 +125,7 @@ export default function Home() {
         // 더 엄격한 조건: 최소 80px 이상 드래그하거나 빠른 속도로 드래그해야 함
         const shouldOpen = (gesture.dx > 80 && gesture.vx > -0.5) || gesture.vx > 1.0;
         Animated.timing(routeSlideAnim, {
-          toValue: shouldOpen ? 20 : -200,
+          toValue: shouldOpen ? 0 : -200,
           duration: shouldOpen ? 300 : 500, // 열릴 때: 300ms, 닫힐 때: 500ms
           useNativeDriver: false,
         }).start(() => setRouteVisible(shouldOpen));

@@ -1,27 +1,27 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
-import { Entypo } from '@expo/vector-icons';
+import { Fontisto } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-export default function HomeButton() {
+export default function SearchButton() {
   const navigation = useNavigation();
 
   return (
     <TouchableOpacity 
-      style={styles.homeButton} 
-      onPress={() => navigation.navigate('MemoMap')}
+      style={styles.searchButton} 
+      onPress={() => navigation.navigate('UserSearch')}
       activeOpacity={0.8}
     >
-      <Entypo name="home" size={24} color="black" />
+      <Fontisto name="search" size={24} color="black" />
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  homeButton: {
+  searchButton: {
     position: 'absolute',
     bottom: 60,
-    right: 20,
+    left: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -36,4 +36,4 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-}); 
+});

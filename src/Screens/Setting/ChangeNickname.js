@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 20,
     alignSelf: 'center',
-    marginTop: 455,
+    marginTop: 410,
   },
   saveButtonDisabled: {
     backgroundColor: '#ccc',

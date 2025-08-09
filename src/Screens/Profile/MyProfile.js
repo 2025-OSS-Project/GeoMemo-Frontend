@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
 import { Ionicons, FontAwesome, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import ScrapMemo from './ScrapMemo';
 import Insight from './Insight';
 import HomeButton from '../Main/HomeButton';
+import SearchButton from './SearchButton';
 
 export default function MyProfile() {
   const navigation = useNavigation();
@@ -13,6 +14,12 @@ export default function MyProfile() {
 
   return (
     <View style={styles.container}>
+      <StatusBar 
+        barStyle="dark-content" 
+        backgroundColor="#fff" 
+        translucent={false}
+        animated={true}
+      />
       {/* 상단 네비게이션 */}
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -68,8 +75,9 @@ export default function MyProfile() {
         {activeTab === 'scrap' ? <ScrapMemo /> : <Insight />}
       </View>
       
-      {/* 홈 버튼 */}
+      {/* 홈 버튼과 검색 버튼 */}
       <HomeButton />
+      <SearchButton />
     </View>
   );
 }
@@ -77,8 +85,9 @@ export default function MyProfile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 50,
+    paddingTop: 30,
     paddingHorizontal: 20,
+    paddingBottom: 0,
     backgroundColor: '#fff',
   },
   topBar: {
@@ -86,12 +95,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10,
-    marginTop: 10 ,
+    marginTop: 10,
   },
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 30,
+    marginTop: 20,
   },
   photoCircle: {
     width: 100,
@@ -132,7 +141,7 @@ const styles = StyleSheet.create({
   },
   tabRow: {
     flexDirection: 'row',
-    marginTop: 30,
+    marginTop: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -148,5 +157,6 @@ const styles = StyleSheet.create({
   contentArea: {
     flex: 1,
     marginTop: 10,
+    marginBottom: 0,
   },
 });

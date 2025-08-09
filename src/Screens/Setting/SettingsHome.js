@@ -116,6 +116,14 @@ export default function SettingsHome() {
         <Text style={styles.boxText}>회원정보 수정</Text>
       </TouchableOpacity>
 
+      {/* 공개설정 변경 */}
+      <TouchableOpacity
+        style={styles.boxButton}
+        onPress={() => navigation.navigate('PrivacySetting')}
+      >
+        <Text style={styles.boxText}>공개설정 변경</Text>
+      </TouchableOpacity>
+
       {/* 알림기능 */}
       <View style={styles.toggleBox}>
         <View style={styles.toggleRow}>
