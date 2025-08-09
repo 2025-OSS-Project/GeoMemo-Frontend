@@ -437,4 +437,49 @@ export const signIn = async (credentials) => {
     console.error('🔗 API 엔드포인트:', `${config.baseURL}/auth/login`);
     throw error;
   }
+};
+
+// 회원탈퇴 함수
+export const deleteAccount = async (userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/user/delete-account`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기 시도
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 회원탈퇴 성공!');
+    console.log('📡 서버 응답:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ 회원탈퇴 실패:', error.message);
+    console.error('🔗 API 엔드포인트:', `${config.baseURL}/user/delete-account`);
+    throw error;
+  }
 }; 

@@ -11,6 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { deleteAccount } from '../../config/Api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -42,6 +43,62 @@ export default function SettingsHome() {
             } catch (error) {
               console.error('❌ 로그아웃 오류:', error);
               Alert.alert('오류', '로그아웃 중 오류가 발생했습니다.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // 회원탈퇴 함수
+  const handleDeleteAccount = async () => {
+    Alert.alert(
+      '회원탈퇴',
+      '정말로 회원탈퇴를 하시겠습니까?\n\n탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.',
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '탈퇴하기',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // 저장된 토큰 가져오기
+              const userToken = await AsyncStorage.getItem('userToken');
+              if (!userToken) {
+                Alert.alert('오류', '로그인이 필요합니다.');
+                return;
+              }
+
+              // 회원탈퇴 API 호출
+              const result = await deleteAccount(userToken);
+              
+              if (result.success) {
+                // AsyncStorage에서 토큰 삭제
+                await AsyncStorage.removeItem('userToken');
+                console.log('✅ 회원탈퇴 완료');
+                
+                Alert.alert(
+                  '탈퇴 완료',
+                  '회원탈퇴가 완료되었습니다.',
+                  [
+                    {
+                      text: '확인',
+                      onPress: () => {
+                        // Login 화면으로 이동 (스택 초기화)
+                        navigation.reset({
+                          index: 0,
+                          routes: [{ name: 'Login' }],
+                        });
+                      }
+                    }
+                  ]
+                );
+              } else {
+                Alert.alert('오류', '회원탈퇴에 실패했습니다.');
+              }
+            } catch (error) {
+              console.error('❌ 회원탈퇴 오류:', error);
+              Alert.alert('오류', `회원탈퇴 중 오류가 발생했습니다: ${error.message}`);
             }
           }
         }
@@ -85,7 +142,7 @@ export default function SettingsHome() {
       </TouchableOpacity>
 
       {/* 회원탈퇴 */}
-      <TouchableOpacity style={styles.withdrawButton}>
+      <TouchableOpacity style={styles.withdrawButton} onPress={handleDeleteAccount}>
         <Text style={styles.withdrawText}>회원탈퇴</Text>
       </TouchableOpacity>
     </View>
