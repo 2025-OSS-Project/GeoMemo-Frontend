@@ -7,6 +7,10 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
+  SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -73,50 +77,77 @@ export default function ChangeNickname() {
   };
 
   return (
-    <View style={styles.container}>
-
-      {/* 제목 */}
-      <Text style={styles.title}>닉네임 변경</Text>
-
-      {/* 안내 문구 */}
-      <Text style={styles.label}>새로운 닉네임을 입력해주세요.</Text>
-
-      {/* 입력 필드 */}
-      <TextInput
-        style={styles.input}
-        placeholder="새로운 닉네임을 입력하세요"
-        placeholderTextColor="#aaa"
-        value={nickname}
-        onChangeText={setNickname}
-        editable={!isLoading}
-        maxLength={20}
-      />
-
-      {/* 글자수 표시 */}
-      <Text style={styles.characterCount}>{nickname.length}/20</Text>
-
-      {/* 저장 버튼 */}
-      <TouchableOpacity 
-        style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
-        onPress={handleNicknameChange}
-        disabled={isLoading}
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        enabled
       >
-        {isLoading ? (
-          <ActivityIndicator size="small" color="#000" />
-        ) : (
-          <Text style={styles.saveText}>저장</Text>
-        )}
-      </TouchableOpacity>
-    </View>
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets={true}
+        >
+          {/* 제목 */}
+          <Text style={styles.title}>닉네임 변경</Text>
+
+          {/* 안내 문구 */}
+          <Text style={styles.label}>새로운 닉네임을 입력해주세요.</Text>
+
+          {/* 입력 필드 */}
+          <TextInput
+            style={styles.input}
+            placeholder="새로운 닉네임을 입력하세요"
+            placeholderTextColor="#aaa"
+            value={nickname}
+            onChangeText={setNickname}
+            editable={!isLoading}
+            maxLength={20}
+            returnKeyType="done"
+          />
+
+          {/* 글자수 표시 */}
+          <Text style={styles.characterCount}>{nickname.length}/20</Text>
+
+          {/* 저장 버튼 */}
+          <TouchableOpacity 
+            style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
+            onPress={handleNicknameChange}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#000" />
+            ) : (
+              <Text style={styles.saveText}>저장</Text>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  container: {
     paddingHorizontal: 24,
     paddingTop: 20,
+    backgroundColor: '#fff',
+    flexGrow: 1,
+    paddingBottom: 100, // 키보드 공간 확보
   },
   title: {
     fontSize: 18,
@@ -146,7 +177,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: '#6EE58F',
-    borderRadius: 999, // 완전 둥글게
+    borderRadius: 999, 
     paddingVertical: 8,
     paddingHorizontal: 20,
     alignSelf: 'center',

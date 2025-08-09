@@ -543,4 +543,65 @@ export const updateNickname = async (nickname, userToken) => {
     console.error('🔗 API 엔드포인트:', `${config.baseURL}/user/update-nickname`);
     throw error;
   }
+};
+
+// 비밀번호 변경 함수
+export const updatePassword = async (password, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/user/update-password`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ password })
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('❌ 서버 에러 응답:', errorData);
+        
+        // 에러 메시지 추출 로직
+        if (errorData.detail) {
+          if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail.map(err => err.msg || err.message || 'Validation error').join(', ');
+          } else {
+            errorMessage = errorData.detail;
+          }
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else {
+          errorMessage = JSON.stringify(errorData);
+        }
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기 시도
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 비밀번호 변경 성공!');
+    console.log('📡 서버 응답:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ 비밀번호 변경 실패:', error.message);
+    console.error('🔗 API 엔드포인트:', `${config.baseURL}/user/update-password`);
+    throw error;
+  }
 }; 
