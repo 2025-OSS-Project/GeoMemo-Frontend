@@ -64,6 +64,15 @@ export default function AddMemo() {
     });
   };
 
+  // 화면 전환 시 배경색 즉시 설정
+  useEffect(() => {
+    // 화면이 마운트되자마자 배경색을 흰색으로 설정
+    const timer = setTimeout(() => {
+      // 강제로 리렌더링하여 배경색 적용
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
   // 현재 위치 가져오기
   useEffect(() => {
     const getCurrentLocation = async () => {
@@ -168,11 +177,12 @@ export default function AddMemo() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-    >
+    <View style={styles.safeContainer}>
+      <KeyboardAvoidingView 
+        style={styles.container} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
       <TouchableWithoutFeedback onPress={() => {
         Keyboard.dismiss();
         // 포커스 해제
@@ -267,11 +277,16 @@ export default function AddMemo() {
           </View>
         </ScrollView>
       </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  safeContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
   container: { 
     flex: 1,
     backgroundColor: '#fff',

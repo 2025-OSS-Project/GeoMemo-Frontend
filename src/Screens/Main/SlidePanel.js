@@ -98,6 +98,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     padding: 20,
     elevation: 10,
+    zIndex: 10, // 지도 위에 표시되도록 zIndex 추가
   },
   handleBar: {
     width: 40,

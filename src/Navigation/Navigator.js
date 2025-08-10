@@ -25,14 +25,48 @@ const Stack = createNativeStackNavigator();
 
 export default function Navigator() {
   return (
-    <Stack.Navigator initialRouteName="Login">
+    <Stack.Navigator 
+      initialRouteName="Login"
+      screenOptions={{
+        animation: 'slide_from_right',
+        animationDuration: 100, // 더 빠른 전환
+        gestureEnabled: true,
+        gestureDirection: 'horizontal',
+        // 메모리 최적화
+        unmountOnBlur: false,
+        // 화면 전환 최적화
+        presentation: 'card',
+        // 전환 최적화
+        gestureResponseDistance: 20, // 더 민감한 제스처
+        gestureVelocityImpact: 0.8, // 더 빠른 제스처 반응
+      }}
+    >
       <Stack.Screen name="Login" component={Login} options={{ headerShown: false }}/>
       <Stack.Screen name="SignUp" component={SignUp} />
       <Stack.Screen name="EmailVerification" component={EmailVerification} />
       <Stack.Screen name="UserInfoInput" component={UserInfoInput} />
-      <Stack.Screen name="MemoMap" component={MemoMap} options={{ headerShown: false }}/>
+      <Stack.Screen 
+        name="MemoMap" 
+        component={MemoMap} 
+        options={{ 
+          headerShown: false,
+          animation: 'fade',
+          animationDuration: 50, // 극도로 빠른 페이드 전환
+          // 홈으로 돌아갈 때 더 부드러운 전환
+          gestureResponseDistance: 20,
+          gestureVelocityImpact: 0.8,
+          // 홈 화면은 메모리에 유지
+          unmountOnBlur: false,
+        }}
+      />
       <Stack.Screen name="MemoManager" component={MemoManager} />
-      <Stack.Screen name="AddMemo" component={AddMemo} />
+      <Stack.Screen 
+        name="AddMemo" 
+        component={AddMemo} 
+        options={{ 
+          animation: 'none',
+        }}
+      />
       <Stack.Screen name="ThisMemoView" component={ThisMemoView} />
       <Stack.Screen name="AllMemoView" component={AllMemoView} />
       <Stack.Screen name="MyProfile" component={MyProfile} options={{ headerShown: false }}/>
