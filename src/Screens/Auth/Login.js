@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -24,6 +26,7 @@ export default function Login() {
       return;
     }
 
+    const loginStartTime = performance.now();
     setIsLoading(true);
 
     try {
@@ -35,12 +38,26 @@ export default function Login() {
       const result = await signIn(credentials);
       
       if (result.access_token) {
-        // 로그인 성공 - 토큰을 AsyncStorage에 저장
-        await AsyncStorage.setItem('userToken', result.access_token);
-        console.log('로그인 성공! 토큰 저장됨:', result.access_token);
-        Alert.alert('성공', '로그인되었습니다!', [
-          { text: '확인', onPress: () => navigation.navigate('MemoMap') }
-        ]);
+        // 로그인 성공 - 즉시 화면 전환 (모든 백그라운드 작업 연기)
+        const navigationStartTime = performance.now();
+        console.log('로그인 성공! 홈 화면으로 즉시 이동...');
+        
+        // 즉시 화면 전환 (사용자 경험 최우선)
+        navigation.navigate('MemoMap');
+        
+        const navigationEndTime = performance.now();
+        console.log(`화면 전환 완료: ${(navigationEndTime - navigationStartTime).toFixed(2)}ms`);
+        
+        // 모든 백그라운드 작업을 더 긴 지연 후에 처리
+        setTimeout(() => {
+          // 토큰 저장
+          AsyncStorage.setItem('userToken', result.access_token)
+            .then(() => console.log('토큰 저장 완료'))
+            .catch(error => console.error('토큰 저장 실패:', error));
+        }, 500); // 500ms 후 백그라운드에서 처리
+        
+        const totalLoginTime = performance.now() - loginStartTime;
+        console.log(`전체 로그인 프로세스: ${totalLoginTime.toFixed(2)}ms`);
       } else {
         Alert.alert('오류', '로그인에 실패했습니다.');
       }
@@ -54,6 +71,7 @@ export default function Login() {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       <Text style={styles.title}>GeoMemo</Text>
 
       <Text style={styles.label}>E-mail</Text>
@@ -66,6 +84,7 @@ export default function Login() {
         keyboardType="email-address"
         autoCapitalize="none"
         returnKeyType="next"
+        editable={!isLoading}
       />
 
       <Text style={styles.label}>비밀번호</Text>
@@ -78,6 +97,7 @@ export default function Login() {
         secureTextEntry
         returnKeyType="done"
         onSubmitEditing={handleLogin}
+        editable={!isLoading}
       />
 
       <TouchableOpacity 
@@ -85,9 +105,14 @@ export default function Login() {
         onPress={handleLogin}
         disabled={isLoading}
       >
-        <Text style={styles.loginButtonText}>
-          {isLoading ? '로그인 중...' : '로그인'}
-        </Text>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color="white" />
+            <Text style={styles.loginButtonText}>로그인 중...</Text>
+          </View>
+        ) : (
+          <Text style={styles.loginButtonText}>로그인</Text>
+        )}
       </TouchableOpacity>
 
       <View style={styles.dividerContainer}>
@@ -96,15 +121,15 @@ export default function Login() {
         <View style={styles.line} />
       </View>
 
-      <TouchableOpacity style={[styles.socialButton, styles.googleButton]}>
+      <TouchableOpacity style={[styles.socialButton, styles.googleButton]} disabled={isLoading}>
         <Text style={styles.socialText}>Google로 로그인</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.socialButton, styles.naverButton]}>
+      <TouchableOpacity style={[styles.socialButton, styles.naverButton]} disabled={isLoading}>
         <Text style={styles.socialText}>Naver로 로그인</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.socialButton, styles.kakaoButton]}>
+      <TouchableOpacity style={[styles.socialButton, styles.kakaoButton]} disabled={isLoading}>
         <Text style={styles.socialText}>Kakao로 로그인</Text>
       </TouchableOpacity>
 
@@ -161,6 +186,11 @@ const styles = StyleSheet.create({
   loginButtonText: {
     color: 'white',
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dividerContainer: {
     flexDirection: 'row',

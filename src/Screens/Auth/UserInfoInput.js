@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 export default function UserInfo( ) {
@@ -9,6 +9,7 @@ export default function UserInfo( ) {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       <Text style={styles.title}>사용자 정보입력</Text>
 
       <Text style={styles.label}>닉네임</Text>
