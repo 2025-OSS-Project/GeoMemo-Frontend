@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { signIn } from '../../config/api';
+import { signIn, validateToken } from '../../config/api';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -28,6 +28,18 @@ export default function Login() {
 
     const loginStartTime = performance.now();
     setIsLoading(true);
+    
+    // 디버깅: 현재 저장된 토큰 확인
+    try {
+      const existingToken = await AsyncStorage.getItem('userToken');
+      if (existingToken) {
+        console.log('🔍 기존 저장된 토큰 발견:', existingToken.substring(0, 20) + '...');
+      } else {
+        console.log('🔍 기존 저장된 토큰 없음');
+      }
+    } catch (error) {
+      console.log('🔍 기존 토큰 확인 실패:', error.message);
+    }
 
     try {
       const credentials = {
@@ -37,10 +49,35 @@ export default function Login() {
 
       const result = await signIn(credentials);
       
+      console.log('로그인 응답 결과:', result);
+      console.log('응답 타입:', typeof result);
+      console.log('응답 키들:', Object.keys(result));
+      
+      // 다양한 토큰 필드명 지원
+      let token = null;
       if (result.access_token) {
+        token = result.access_token;
+        console.log('✅ access_token으로 토큰 획득');
+      } else if (result.token) {
+        token = result.token;
+        console.log('✅ token으로 토큰 획득');
+      } else if (result.accessToken) {
+        token = result.accessToken;
+        console.log('✅ accessToken으로 토큰 획득');
+      } else if (result.data && result.data.access_token) {
+        token = result.data.access_token;
+        console.log('✅ result.data.access_token으로 토큰 획득');
+      } else {
+        console.warn('⚠️ 토큰을 찾을 수 없음. 전체 응답:', JSON.stringify(result, null, 2));
+        Alert.alert('오류', '서버에서 토큰을 받지 못했습니다. 관리자에게 문의하세요.');
+        return;
+      }
+      
+      if (token) {
         // 로그인 성공 - 즉시 화면 전환 (모든 백그라운드 작업 연기)
         const navigationStartTime = performance.now();
         console.log('로그인 성공! 홈 화면으로 즉시 이동...');
+        console.log('토큰 길이:', token.length);
         
         // 즉시 화면 전환 (사용자 경험 최우선)
         navigation.navigate('MemoMap');
@@ -49,11 +86,31 @@ export default function Login() {
         console.log(`화면 전환 완료: ${(navigationEndTime - navigationStartTime).toFixed(2)}ms`);
         
         // 모든 백그라운드 작업을 더 긴 지연 후에 처리
-        setTimeout(() => {
-          // 토큰 저장
-          AsyncStorage.setItem('userToken', result.access_token)
-            .then(() => console.log('토큰 저장 완료'))
-            .catch(error => console.error('토큰 저장 실패:', error));
+        setTimeout(async () => {
+          try {
+            // 토큰 저장
+            await AsyncStorage.setItem('userToken', token);
+            console.log('✅ 토큰 저장 완료');
+            
+            // 저장된 토큰 확인
+            const savedToken = await AsyncStorage.getItem('userToken');
+            console.log('저장된 토큰 확인:', savedToken ? '성공' : '실패');
+            console.log('저장된 토큰 길이:', savedToken ? savedToken.length : 0);
+            
+            // 토큰 유효성 검증
+            if (savedToken) {
+              const isValid = await validateToken(savedToken);
+              if (isValid) {
+                console.log('✅ 저장된 토큰 유효성 검증 성공');
+              } else {
+                console.warn('⚠️ 저장된 토큰이 유효하지 않음');
+                await AsyncStorage.removeItem('userToken');
+              }
+            }
+          } catch (error) {
+            console.error('❌ 토큰 저장 실패:', error);
+            Alert.alert('경고', '토큰 저장에 실패했습니다. 앱을 다시 시작해주세요.');
+          }
         }, 500); // 500ms 후 백그라운드에서 처리
         
         const totalLoginTime = performance.now() - loginStartTime;
@@ -63,7 +120,22 @@ export default function Login() {
       }
       
     } catch (error) {
-      Alert.alert('오류', error.message);
+      console.error('로그인 에러 상세:', error);
+      
+      let errorMessage = '로그인에 실패했습니다.';
+      if (error.message.includes('Network')) {
+        errorMessage = '네트워크 연결을 확인해주세요.';
+      } else if (error.message.includes('401')) {
+        errorMessage = '이메일 또는 비밀번호가 올바르지 않습니다.';
+      } else if (error.message.includes('500')) {
+        errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+      } else if (error.message.includes('timeout')) {
+        errorMessage = '요청 시간이 초과되었습니다. 다시 시도해주세요.';
+      } else {
+        errorMessage = error.message || '알 수 없는 오류가 발생했습니다.';
+      }
+      
+      Alert.alert('로그인 실패', errorMessage);
     } finally {
       setIsLoading(false);
     }

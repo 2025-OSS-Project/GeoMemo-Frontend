@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native
 import { useNavigation } from '@react-navigation/native';
 
 export default function OtherMemoList() {
-    const dummyData = [0, 0, 0, 0]; // 실제 데이터 오기 전까지 placeholder
+    const dummyData = []; // API에서 받아온 데이터로 교체 예정
     const navigation = useNavigation();
 
     const renderItem = ({ item }) => (

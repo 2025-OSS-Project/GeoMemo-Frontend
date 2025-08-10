@@ -58,8 +58,6 @@ export const sendMapBoundsToBackend = async (bounds, userToken = null) => {
     }
 
     const result = await response.json();
-    console.log('백엔드 전송 성공!');
-    console.log('서버 응답:', result);
     return result;
   } catch (error) {
     console.error(' 지도 경계 전송 실패:', error.message);
@@ -82,16 +80,11 @@ export const createMemo = async (memoData, userToken = null) => {
       headers['Authorization'] = `Bearer ${userToken}`;
     }
 
-    console.log('API Call:', config.memosEndpoint);
-    console.log('Headers:', headers);
-
     const response = await fetch(config.memosEndpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify(memoData)
     });
-
-    console.log('Status:', response.status, response.statusText);
 
     if (!response.ok) {
       let errorMessage = `HTTP error! status: ${response.status}`;
@@ -130,7 +123,6 @@ export const createMemo = async (memoData, userToken = null) => {
     }
 
     const result = await response.json();
-    console.log('Success Response:', JSON.stringify(result, null, 2));
     return result;
   } catch (error) {
     console.error(' 메모 생성 실패:', error.message);
@@ -151,7 +143,12 @@ export const getMemos = async (page = 1, limit = 10, userToken = null) => {
     // 토큰이 있을 때만 Authorization 헤더 추가
     if (userToken) {
       headers['Authorization'] = `Bearer ${userToken}`;
+      console.log('메모 목록 조회에 토큰 사용:', userToken.substring(0, 20) + '...');
+    } else {
+      console.warn('메모 목록 조회에 토큰이 없음');
     }
+
+    console.log('메모 목록 조회 시작:', { page, limit, hasToken: !!userToken });
 
     const response = await fetch(`${config.memosEndpoint}?page=${page}&limit=${limit}`, {
       method: 'GET',
@@ -179,7 +176,6 @@ export const getMemos = async (page = 1, limit = 10, userToken = null) => {
     }
 
     const result = await response.json();
-    console.log(' 메모 목록 조회 성공!');
     return result;
   } catch (error) {
     console.error(' 메모 목록 조회 실패:', error.message);
@@ -188,15 +184,83 @@ export const getMemos = async (page = 1, limit = 10, userToken = null) => {
   }
 };
 
+// 전체 메모 조회 함수 (지도 경계 기반)
+export const getAllMemos = async (userToken = null, viewSetting = 'all') => {
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    
+    // 토큰이 있을 때만 Authorization 헤더 추가
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+      console.log('전체 메모 조회에 토큰 사용:', userToken.substring(0, 20) + '...');
+    } else {
+      console.warn('전체 메모 조회에 토큰이 없음');
+    }
+
+    console.log('전체 메모 조회 시작:', { 
+      viewSetting, 
+      hasToken: !!userToken
+    });
+
+    // API 명세서에 맞춰 쿼리 파라미터 구성
+    const queryParams = new URLSearchParams({
+      view_setting: viewSetting
+    });
+
+    const url = `https://dco69dhctdpt.cloudfront.net/api/memo/all?${queryParams}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('서버 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('전체 메모 조회 실패:', error.message);
+    console.error('API 엔드포인트:', 'https://dco69dhctdpt.cloudfront.net/api/memo/all');
+    throw error;
+  }
+};
+
 // 메모 상세 조회 함수
-export const getMemoById = async (memoId, userToken = 'test-token') => {
+export const getMemoById = async (memoId, userToken = null) => {
   const config = getApiConfig();
   
   try {
     const headers = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${userToken}`,
     };
+    
+    // 토큰이 있을 때만 Authorization 헤더 추가
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+      console.log('메모 상세 조회에 토큰 사용:', userToken.substring(0, 20) + '...');
+    } else {
+      console.warn('메모 상세 조회에 토큰이 없음');
+    }
 
     const response = await fetch(`${config.memosEndpoint}${memoId}`, {
       method: 'GET',
@@ -204,29 +268,51 @@ export const getMemoById = async (memoId, userToken = 'test-token') => {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('메모 상세 조회 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();
-    console.log(' 메모 상세 조회 성공!');
+    console.log('✅ 메모 상세 조회 성공:', memoId);
     return result;
   } catch (error) {
-    console.error(' 메모 상세 조회 실패:', error.message);
-    console.error(' API 엔드포인트:', `${config.memosEndpoint}${memoId}`);
+    console.error('❌ 메모 상세 조회 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.memosEndpoint}${memoId}`);
     throw error;
   }
 };
 
 // 메모 삭제 함수 (POST 메서드)
-export const deleteMemo = async (memoId, userToken = 'test-token') => {
+export const deleteMemo = async (memoId, userToken = null) => {
   const config = getApiConfig();
   
   try {
     const headers = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${userToken}`,
     };
+    
+    // 토큰이 있을 때만 Authorization 헤더 추가
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+      console.log('메모 삭제에 토큰 사용:', userToken.substring(0, 20) + '...');
+    } else {
+      console.warn('메모 삭제에 토큰이 없음');
+    }
 
     const response = await fetch(`${config.baseURL}/memo/delete/${memoId}`, {
       method: 'POST',
@@ -234,17 +320,31 @@ export const deleteMemo = async (memoId, userToken = 'test-token') => {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('메모 삭제 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();
-    console.log(' 메모 삭제 성공!');
-    console.log(' 서버 응답:', result);
+    console.log('✅ 메모 삭제 성공:', memoId);
     return result;
   } catch (error) {
-    console.error(' 메모 삭제 실패:', error.message);
-    console.error(' API 엔드포인트:', `${config.baseURL}/memo/delete/${memoId}`);
+    console.error('❌ 메모 삭제 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/memo/delete/${memoId}`);
     throw error;
   }
 };
@@ -254,11 +354,6 @@ export const updateMemo = async (memoId, updateData, userToken = null) => {
   const config = getApiConfig();
   
   try {
-    console.log('🔧 updateMemo 함수 시작');
-    console.log('📝 memoId:', memoId);
-    console.log('📝 updateData:', JSON.stringify(updateData, null, 2));
-    console.log('🔑 userToken:', userToken ? '토큰 있음' : '토큰 없음');
-    
     const headers = {
       'Content-Type': 'application/json',
     };
@@ -269,9 +364,6 @@ export const updateMemo = async (memoId, updateData, userToken = null) => {
     }
 
     const url = `${config.baseURL}/memo/update/${memoId}`;
-    console.log(' 요청 URL:', url);
-    console.log(' 요청 메서드:', 'POST');
-    console.log(' 요청 헤더:', JSON.stringify(headers, null, 2));
 
     const response = await fetch(url, {
       method: 'POST',
@@ -316,8 +408,6 @@ export const updateMemo = async (memoId, updateData, userToken = null) => {
     }
 
     const result = await response.json();
-    console.log(' 메모 수정 성공!');
-    console.log(' 서버 응답:', result);
     return result;
   } catch (error) {
     console.error(' 메모 수정 실패:', error.message);
@@ -363,11 +453,6 @@ export const signUp = async (userData) => {
     let result;
     try {
       result = await response.json();
-      console.log(' 회원가입 성공!');
-      console.log(' 서버 응답:', result);
-      console.log(' 응답 타입:', typeof result);
-      console.log(' success 필드:', result.success);
-      console.log(' data 필드:', result.data);
     } catch (parseError) {
       // JSON 파싱 실패 시 텍스트로 읽기
       const responseText = await response.text();
@@ -375,7 +460,6 @@ export const signUp = async (userData) => {
     }
     
     // HTTP 200이면 성공으로 처리 (실제 DB에 저장되었으므로)
-    console.log(' HTTP 200 응답 - 성공 처리');
     return {
       success: true,
       data: {
@@ -392,29 +476,39 @@ export const signUp = async (userData) => {
 
 // 로그인 함수
 export const signIn = async (credentials) => {
-  const config = getApiConfig();
-  
   try {
     const headers = {
       'Content-Type': 'application/json',
     };
 
-    const response = await fetch(`${config.baseURL}/auth/login`, {
+    console.log('로그인 요청 시작:', {
+      url: 'https://dco69dhctdpt.cloudfront.net/api/auth/login',
+      method: 'POST',
+      headers,
+      credentials: { ...credentials, password: '***' }
+    });
+
+    const response = await fetch(`https://dco69dhctdpt.cloudfront.net/api/auth/login`, {
       method: 'POST',
       headers,
       body: JSON.stringify(credentials)
     });
+
+    console.log('로그인 응답 상태:', response.status);
+    console.log('로그인 응답 헤더:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       let errorMessage = `HTTP error! status: ${response.status}`;
       
       try {
         const errorData = await response.json();
-        errorMessage = errorData.detail || errorData.error || errorMessage;
+        console.error('로그인 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
       } catch (parseError) {
         // JSON 파싱 실패 시 텍스트로 읽기 시도
         try {
           const errorText = await response.text();
+          console.error('로그인 에러 텍스트:', errorText);
           errorMessage = `Server response: ${errorText}`;
         } catch (textError) {
           errorMessage = `HTTP error! status: ${response.status}`;
@@ -427,18 +521,30 @@ export const signIn = async (credentials) => {
     let result;
     try {
       result = await response.json();
-      console.log(' 로그인 성공!');
-      console.log(' 서버 응답:', result);
+      console.log('로그인 성공 응답:', result);
+      console.log('응답 키들:', Object.keys(result));
+      
+      // 토큰 필드 확인
+      if (result.access_token) {
+        console.log('✅ access_token 발견:', result.access_token.substring(0, 20) + '...');
+      } else if (result.token) {
+        console.log('✅ token 발견:', result.token.substring(0, 20) + '...');
+      } else if (result.accessToken) {
+        console.log('✅ accessToken 발견:', result.accessToken.substring(0, 20) + '...');
+      } else {
+        console.warn('토큰 필드를 찾을 수 없음. 사용 가능한 필드들:', Object.keys(result));
+      }
     } catch (parseError) {
       // JSON 파싱 실패 시 텍스트로 읽기
       const responseText = await response.text();
+      console.error('로그인 응답 JSON 파싱 실패:', responseText);
       throw new Error(`Invalid JSON response: ${responseText}`);
     }
     
     return result;
   } catch (error) {
-    console.error(' 로그인 실패:', error.message);
-    console.error(' API 엔드포인트:', `${config.baseURL}/auth/login`);
+    console.error('로그인 실패:', error.message);
+    console.error('API 엔드포인트:', 'https://dco69dhctdpt.cloudfront.net/api/auth/login');
     throw error;
   }
 };
@@ -478,8 +584,6 @@ export const deleteAccount = async (userToken) => {
     }
 
     const result = await response.json();
-    console.log(' 회원탈퇴 성공!');
-    console.log(' 서버 응답:', result);
     return result;
   } catch (error) {
     console.error(' 회원탈퇴 실패:', error.message);
@@ -539,8 +643,6 @@ export const updateNickname = async (nickname, userToken) => {
     }
 
     const result = await response.json();
-    console.log(' 닉네임 변경 성공!');
-    console.log(' 서버 응답:', result);
     return result;
   } catch (error) {
     console.error(' 닉네임 변경 실패:', error.message);
@@ -603,8 +705,6 @@ export const updatePassword = async (currentPassword, newPassword, userToken) =>
     }
 
     const result = await response.json();
-    console.log(' 비밀번호 변경 성공!');
-    console.log(' 서버 응답:', result);
     return result;
   } catch (error) {
     console.error(' 비밀번호 변경 실패:', error.message);
@@ -622,8 +722,6 @@ export const saveProfileImage = async (profileImageUrl, userToken) => {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${userToken}`,
     };
-
-    console.log('프로필 이미지 저장 시작:', profileImageUrl);
 
     const response = await fetch(`${config.baseURL}/user/profile-image`, {
       method: 'POST',
@@ -668,8 +766,6 @@ export const saveProfileImage = async (profileImageUrl, userToken) => {
     }
 
     const result = await response.json();
-    console.log('프로필 이미지 저장 성공!');
-    console.log('서버 응답:', result);
     return result;
   } catch (error) {
     console.error('프로필 이미지 저장 실패:', error.message);
@@ -687,8 +783,6 @@ export const getProfileImage = async (userId, userToken) => {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${userToken}`,
     };
-
-    console.log('프로필 이미지 조회 시작:', userId);
 
     const response = await fetch(`${config.baseURL}/user/profile-image?user_id=${userId}`, {
       method: 'GET',
@@ -716,8 +810,6 @@ export const getProfileImage = async (userId, userToken) => {
     }
 
     const result = await response.json();
-    console.log(' 프로필 이미지 조회 성공!');
-    console.log(' 서버 응답:', result);
     return result.profile_image_url;
   } catch (error) {
     console.error(' 프로필 이미지 조회 실패:', error.message);
@@ -748,7 +840,6 @@ export const searchUsers = async (keyword, type = 'nickname', limit = 10, userTo
     });
 
     const url = `${config.baseURL}/user/search?${queryParams}`;
-    console.log('사용자 검색 API 호출:', url);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -776,8 +867,6 @@ export const searchUsers = async (keyword, type = 'nickname', limit = 10, userTo
     }
 
     const result = await response.json();
-    console.log('사용자 검색 성공!');
-    console.log('검색 결과:', result);
     return result;
   } catch (error) {
     console.error('사용자 검색 실패:', error.message);
@@ -795,8 +884,6 @@ export const updatePrivacySetting = async (privacySetting, userToken) => {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${userToken}`,
     };
-
-    console.log('공개설정 변경 시작:', privacySetting);
 
     const response = await fetch(`${config.baseURL}/user/update-privacy`, {
       method: 'POST',
@@ -841,8 +928,6 @@ export const updatePrivacySetting = async (privacySetting, userToken) => {
     }
 
     const result = await response.json();
-    console.log('공개설정 변경 성공!');
-    console.log('서버 응답:', result);
     return result;
   } catch (error) {
     console.error('공개설정 변경 실패:', error.message);
@@ -860,8 +945,6 @@ export const getUserPrivacySetting = async (userToken) => {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${userToken}`,
     };
-
-    console.log('공개설정 조회 시작');
 
     const response = await fetch(`${config.baseURL}/api/user/privacy-setting`, {
       method: 'GET',
@@ -889,8 +972,6 @@ export const getUserPrivacySetting = async (userToken) => {
     }
 
     const result = await response.json();
-    console.log('공개설정 조회 성공!');
-    console.log('서버 응답:', result);
     return result;
   } catch (error) {
     console.error('공개설정 조회 실패:', error.message);
@@ -904,26 +985,252 @@ export const getUserInfo = async (userToken = null) => {
   const config = getApiConfig();
   
   try {
-    const headers = { 'Content-Type': 'application/json' };
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    
     if (userToken) {
       headers['Authorization'] = `Bearer ${userToken}`;
     }
-    
+
     const response = await fetch(`${config.baseURL}/auth/me`, {
       method: 'GET',
-      headers
+      headers,
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
+
     const result = await response.json();
-    console.log('✅ 사용자 정보 조회 성공:', result);
     return result;
   } catch (error) {
-    console.error('❌ 사용자 정보 조회 실패:', error.message);
-    console.error('🔗 API 엔드포인트:', `${config.baseURL}/auth/me`);
+    console.error('사용자 정보 조회 실패:', error.message);
+    throw error;
+  }
+};
+
+// 토큰 유효성 검증 함수
+export const validateToken = async (token) => {
+  if (!token) {
+    console.log('❌ 토큰이 없음');
+    return false;
+  }
+  
+  try {
+    console.log('토큰 유효성 검증 시작...');
+    console.log('토큰 길이:', token.length);
+    console.log('토큰 시작 부분:', token.substring(0, 20) + '...');
+    
+    const userInfo = await getUserInfo(token);
+    console.log('✅ 토큰 유효성 검증 성공:', userInfo);
+    return true;
+  } catch (error) {
+    console.error('❌ 토큰 유효성 검증 실패:', error.message);
+    return false;
+  }
+};
+
+// 저장된 토큰 확인 함수
+export const checkStoredToken = async () => {
+  try {
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    const token = await AsyncStorage.getItem('userToken');
+    
+    if (token) {
+      console.log('저장된 토큰 발견:', token.substring(0, 20) + '...');
+      console.log('토큰 길이:', token.length);
+      
+      // 토큰 유효성 검증
+      const isValid = await validateToken(token);
+      return isValid ? token : null;
+    } else {
+      console.log('저장된 토큰 없음');
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ 저장된 토큰 확인 실패:', error);
+    return null;
+  }
+};
+
+// 메모 조회 시 토큰 전달 상태 확인 함수
+export const checkMemoTokenStatus = async () => {
+  try {
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    const token = await AsyncStorage.getItem('userToken');
+    
+    console.log('메모 조회 토큰 상태 확인:');
+    console.log('  - 저장된 토큰:', token ? '있음' : '없음');
+    
+    if (token) {
+      console.log('  - 토큰 길이:', token.length);
+      console.log('  - 토큰 시작 부분:', token.substring(0, 20) + '...');
+      
+      // 간단한 토큰 형식 검증
+      if (token.includes('.')) {
+        console.log('  - 토큰 형식: JWT 형식 (올바름)');
+      } else {
+        console.log('  - 토큰 형식: 일반 문자열');
+      }
+    }
+    
+    return token;
+  } catch (error) {
+    console.error('❌ 토큰 상태 확인 실패:', error);
+    return null;
+  }
+};
+
+// 뷰 설정 업데이트 함수 (전체/팔로잉/나 필터)
+export const updateViewSettings = async (viewSettings, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+    }
+
+    const requestBody = {
+      view_settings: viewSettings
+    };
+
+    console.log('뷰 설정 업데이트 요청:', {
+      url: `${config.baseURL}/user/update-view`,
+      method: 'POST',
+      headers,
+      body: requestBody
+    });
+
+    const response = await fetch(`${config.baseURL}/user/update-view`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestBody)
+    });
+
+    console.log('뷰 설정 업데이트 응답 상태:', response.status);
+    console.log('뷰 설정 업데이트 응답 헤더:', response.headers);
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('서버 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          console.error('서버 에러 텍스트:', errorText);
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('뷰 설정 업데이트 성공 응답:', result);
+    return result;
+  } catch (error) {
+    console.error('뷰 설정 업데이트 실패:', error.message);
+    throw error;
+  }
+}; 
+
+// 스크랩 메모 함수
+export const scrapMemo = async (memoId, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/memo/scrap/${memoId}`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('스크랩 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 메모 스크랩 성공:', memoId);
+    return result;
+  } catch (error) {
+    console.error('❌ 메모 스크랩 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/memo/scrap/${memoId}`);
+    throw error;
+  }
+};
+
+// 언스크랩 메모 함수
+export const unscrapMemo = async (memoId, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/memo/unscrap/${memoId}`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('언스크랩 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 메모 언스크랩 성공:', memoId);
+    return result;
+  } catch (error) {
+    console.error('❌ 메모 언스크랩 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/memo/unscrap/${memoId}`);
     throw error;
   }
 }; 

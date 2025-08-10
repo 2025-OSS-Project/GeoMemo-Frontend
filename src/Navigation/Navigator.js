@@ -59,7 +59,7 @@ export default function Navigator() {
           unmountOnBlur: false,
         }}
       />
-      <Stack.Screen name="MemoManager" component={MemoManager} />
+      <Stack.Screen name="MemoManager" component={MemoManager} options={{ headerShown: false }}/>
       <Stack.Screen 
         name="AddMemo" 
         component={AddMemo} 

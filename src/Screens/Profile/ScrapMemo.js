@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 export default function ScrapMemo() {
   const navigation = useNavigation();
 
-  const dummyData = [1, 2, 3, 4];
+  const dummyData = []; // API에서 받아온 데이터로 교체 예정
 
   const renderItem = ({ item }) => (
     <View style={styles.memoRow}>

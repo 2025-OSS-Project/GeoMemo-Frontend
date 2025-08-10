@@ -5,11 +5,7 @@ import HomeButton from '../Main/HomeButton';
 
 export default function Follower() {
     const navigation = useNavigation();
-    const followerData = [
-        { id: '1', nickname: 'nickname_1' },
-        { id: '2', nickname: 'nickname_2' },
-        { id: '3', nickname: 'nickname_3' },
-    ];
+    const followerData = []; // API에서 받아온 데이터로 교체 예정
 
     const renderItem = ({ item }) => (
         <View style={styles.followerRow}>
