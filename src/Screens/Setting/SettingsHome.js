@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,16 +8,79 @@ import {
   Dimensions,
   Alert,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { deleteAccount } from '../../config/api';
+import { deleteAccount, getUserInfo } from '../../config/api';
 
 const { width, height } = Dimensions.get('window');
 
 export default function SettingsHome() {
   const navigation = useNavigation();
   const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
+  const [currentPrivacySetting, setCurrentPrivacySetting] = useState('open');
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 사용자 정보 조회
+  const fetchUserInfo = async () => {
+    try {
+      const userToken = await AsyncStorage.getItem('userToken');
+      if (userToken) {
+        const userInfo = await getUserInfo(userToken);
+        console.log('사용자 정보 조회 완료:', userInfo);
+        console.log('전체 응답 키들:', Object.keys(userInfo));
+        
+        // 공개설정 상태 설정
+        if (userInfo.privacy_settings) {
+          console.log('privacy_settings 필드 발견:', userInfo.privacy_settings);
+          setCurrentPrivacySetting(userInfo.privacy_settings);
+        } else if (userInfo.privacy_setting) {
+          console.log('privacy_setting 필드 발견:', userInfo.privacy_setting);
+          setCurrentPrivacySetting(userInfo.privacy_setting);
+        } else if (userInfo.is_public !== undefined) {
+          console.log('is_public 필드 발견:', userInfo.is_public);
+          setCurrentPrivacySetting(userInfo.is_public ? 'open' : 'closed');
+        } else if (userInfo.privacy) {
+          console.log('privacy 필드 발견:', userInfo.privacy);
+          setCurrentPrivacySetting(userInfo.privacy);
+        } else {
+          console.log('공개설정 관련 필드를 찾을 수 없음');
+          console.log('사용 가능한 필드들:', Object.keys(userInfo));
+        }
+      }
+    } catch (error) {
+      console.error('❌ 사용자 정보 조회 실패:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserInfo();
+  }, []);
+
+  // 화면에 포커스가 올 때마다 사용자 정보 새로 조회
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchUserInfo();
+    }, [])
+  );
+
+  // 공개설정 텍스트 변환
+  const getPrivacyText = (setting) => {
+    console.log('공개설정 변환:', setting);
+    switch (setting) {
+      case 'open':
+        return '전체 공개';
+      case 'semi':
+        return '일부 공개';
+      case 'closed':
+        return '비공개';
+      default:
+        console.log('알 수 없는 공개설정:', setting);
+        return '전체 공개';
+    }
+  };
 
   // 로그아웃 함수
   const handleLogout = async () => {
@@ -121,7 +184,14 @@ export default function SettingsHome() {
         style={styles.boxButton}
         onPress={() => navigation.navigate('PrivacySetting')}
       >
-        <Text style={styles.boxText}>공개설정 변경</Text>
+        <View style={styles.settingRow}>
+          <Text style={styles.boxText}>공개설정 변경</Text>
+          {!isLoading && (
+            <Text style={styles.currentSettingText}>
+              {getPrivacyText(currentPrivacySetting)}
+            </Text>
+          )}
+        </View>
       </TouchableOpacity>
 
       {/* 알림기능 */}
@@ -184,6 +254,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   boxText: {
     fontSize: 15,
     fontWeight: '500',
@@ -192,6 +267,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555',
     marginTop: 8,
+  },
+  currentSettingText: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '400',
   },
   logoutButton: {
     width: '100%',

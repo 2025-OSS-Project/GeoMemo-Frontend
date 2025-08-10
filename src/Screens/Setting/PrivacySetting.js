@@ -10,7 +10,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { updatePrivacySetting, getUserPrivacySetting } from '../../config/api';
+import { updatePrivacySetting, getUserInfo } from '../../config/api';
 
 export default function PrivacySetting() {
   const navigation = useNavigation();
@@ -54,11 +54,28 @@ export default function PrivacySetting() {
         return;
       }
 
-      // TODO: API 구현 후 현재 설정 조회
-      // const result = await getUserPrivacySetting(userToken);
+      // 사용자 정보 조회로 현재 공개설정 가져오기
+      const userInfo = await getUserInfo(userToken);
+      console.log('사용자 정보 조회 완료:', userInfo);
       
-      // 임시로 기본값 설정 (API 구현 전까지)
-      setCurrentSetting('open');
+      // 공개설정 상태 설정
+      if (userInfo.privacy_settings) {
+        console.log('privacy_settings 필드 발견:', userInfo.privacy_settings);
+        setCurrentSetting(userInfo.privacy_settings);
+      } else if (userInfo.privacy_setting) {
+        console.log('privacy_setting 필드 발견:', userInfo.privacy_setting);
+        setCurrentSetting(userInfo.privacy_setting);
+      } else if (userInfo.is_public !== undefined) {
+        console.log('is_public 필드 발견:', userInfo.is_public);
+        setCurrentSetting(userInfo.is_public ? 'open' : 'closed');
+      } else if (userInfo.privacy) {
+        console.log('privacy 필드 발견:', userInfo.privacy);
+        setCurrentSetting(userInfo.privacy);
+      } else {
+        console.log('공개설정 관련 필드를 찾을 수 없음');
+        console.log('사용 가능한 필드들:', Object.keys(userInfo));
+        setCurrentSetting('open'); // 기본값
+      }
     } catch (error) {
       console.error('공개설정 조회 오류:', error);
       setCurrentSetting('open');

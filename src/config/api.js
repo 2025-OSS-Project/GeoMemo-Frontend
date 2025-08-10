@@ -898,3 +898,32 @@ export const getUserPrivacySetting = async (userToken) => {
     throw error;
   }
 }; 
+
+// 사용자 정보 조회 함수
+export const getUserInfo = async (userToken = null) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+    }
+    
+    const response = await fetch(`${config.baseURL}/auth/me`, {
+      method: 'GET',
+      headers
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log('✅ 사용자 정보 조회 성공:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ 사용자 정보 조회 실패:', error.message);
+    console.error('🔗 API 엔드포인트:', `${config.baseURL}/auth/me`);
+    throw error;
+  }
+}; 
