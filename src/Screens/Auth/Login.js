@@ -33,12 +33,12 @@ export default function Login() {
     try {
       const existingToken = await AsyncStorage.getItem('userToken');
       if (existingToken) {
-        console.log('🔍 기존 저장된 토큰 발견:', existingToken.substring(0, 20) + '...');
+        console.log('기존 저장된 토큰 발견:', existingToken.substring(0, 20) + '...');
       } else {
-        console.log('🔍 기존 저장된 토큰 없음');
+        console.log('기존 저장된 토큰 없음');
       }
     } catch (error) {
-      console.log('🔍 기존 토큰 확인 실패:', error.message);
+      console.log('기존 토큰 확인 실패:', error.message);
     }
 
     try {
@@ -136,6 +136,8 @@ export default function Login() {
       }
       
       Alert.alert('로그인 실패', errorMessage);
+      // 로그인 실패 시 비밀번호만 초기화
+      setPassword('');
     } finally {
       setIsLoading(false);
     }

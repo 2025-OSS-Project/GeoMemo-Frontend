@@ -194,15 +194,9 @@ export const getAllMemos = async (userToken = null, viewSetting = 'all') => {
     // 토큰이 있을 때만 Authorization 헤더 추가
     if (userToken) {
       headers['Authorization'] = `Bearer ${userToken}`;
-      console.log('전체 메모 조회에 토큰 사용:', userToken.substring(0, 20) + '...');
     } else {
       console.warn('전체 메모 조회에 토큰이 없음');
     }
-
-    console.log('전체 메모 조회 시작:', { 
-      viewSetting, 
-      hasToken: !!userToken
-    });
 
     // API 명세서에 맞춰 쿼리 파라미터 구성
     const queryParams = new URLSearchParams({

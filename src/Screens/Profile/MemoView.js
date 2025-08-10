@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Image, ActivityIndicator, Alert, Linking } from 'react-native';
 import { Ionicons, FontAwesome, AntDesign } from '@expo/vector-icons';
 import { getMemoById, scrapMemo, unscrapMemo } from '../../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -95,6 +95,33 @@ export default function MemoView({ navigation, route }) {
     } finally {
       setIsScrapLoading(false);
     }
+  };
+
+  // 길찾기 함수 추가
+  const handleNavigation = () => {
+    if (!memo.location || !memo.location.latitude || !memo.location.longitude) {
+      Alert.alert('위치 정보 없음', '이 메모에는 위치 정보가 없습니다.');
+      return;
+    }
+
+    const { latitude, longitude } = memo.location;
+    const address = memo.location.address || '목적지';
+    
+    // 구글맵스 앱으로 길찾기
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&travelmode=driving`;
+    
+    Linking.canOpenURL(url).then(supported => {
+      if (supported) {
+        return Linking.openURL(url);
+      } else {
+        // 구글맵스 앱이 없으면 웹브라우저로 열기
+        const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&travelmode=driving`;
+        return Linking.openURL(webUrl);
+      }
+    }).catch(err => {
+      console.error('길찾기 앱 열기 실패:', err);
+      Alert.alert('오류', '길찾기 앱을 열 수 없습니다.');
+    });
   };
 
   // 로딩 중일 때
@@ -281,7 +308,7 @@ export default function MemoView({ navigation, route }) {
           <View style={styles.footerSpacer} />
 
           {memo.location && (
-            <TouchableOpacity>
+            <TouchableOpacity onPress={handleNavigation}>
               <View style={styles.footerBtn}>
                 <Ionicons name="navigate" size={24} color="black" />
               </View>

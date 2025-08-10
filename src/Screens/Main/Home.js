@@ -52,12 +52,9 @@ function Home() {
       const token = await AsyncStorage.getItem('userToken');
       if (token) {
         setUserToken(token);
-        console.log('사용자 토큰 로드 완료');
-      } else {
-        console.log('사용자 토큰이 없습니다');
       }
     } catch (error) {
-      console.error('토큰 로드 실패:', error);
+      // 토큰 로드 실패 시 무시
     }
   };
 
@@ -103,23 +100,12 @@ function Home() {
 
   const fetchAllMemos = useCallback(async (bounds) => {
     try {
-      console.log('=== fetchAllMemos 호출됨 ===');
-      console.log('userToken 존재 여부:', !!userToken);
-      console.log('현재 filter:', filter);
-      
       if (!userToken) {
-        console.log('토큰이 없어서 메모 조회를 건너뜠니다');
         return;
       }
       
       // 로딩 상태 시작
       setIsLoadingMemos(true);
-      
-      console.log('메모 조회 시작 - 토큰 상태:', {
-        hasToken: !!userToken,
-        tokenLength: userToken ? userToken.length : 0,
-        tokenStart: userToken ? userToken.substring(0, 20) + '...' : '없음'
-      });
       
       // 현재 필터에 맞는 view_setting 값 매핑
       let viewSetting;
@@ -137,20 +123,9 @@ function Home() {
           viewSetting = 'all';
       }
       
-      console.log('요청할 view_setting:', viewSetting);
-      console.log('API 호출 시작...');
-      
       const response = await getAllMemos(userToken, viewSetting);
-      console.log('=== API 응답 받음 (fetchAllMemos) ===');
-      console.log('응답 전체:', response);
-      console.log('응답 success:', response.success);
-      console.log('응답 data 존재 여부:', !!response.data);
-      console.log('응답 data 길이:', response.data ? response.data.length : 'undefined');
       
       if (response.success && response.data) {
-        console.log(`메모 조회 성공: ${response.data.length}개 메모`);
-        console.log('첫 번째 메모 샘플:', response.data[0]);
-        
         // API 응답 구조에 맞춰 메모 데이터 변환
         const transformedMemos = response.data.map(memo => ({
           id: memo.memoId,
@@ -166,22 +141,11 @@ function Home() {
           fileUrl: memo.fileUrl
         }));
         
-        console.log('변환된 메모 데이터:', transformedMemos.length, '개');
-        if (transformedMemos.length > 0) {
-          console.log('변환된 첫 번째 메모:', transformedMemos[0]);
-        }
-        
         setMemos(transformedMemos);
       } else {
-        console.warn('=== 메모 조회 실패 (fetchAllMemos) ===');
-        console.warn('응답 success가 false이거나 data가 없음');
-        console.warn('전체 응답:', response);
         setMemos([]);
       }
     } catch (error) {
-      console.error('=== 메모 조회 중 오류 발생 ===');
-      console.error('오류 메시지:', error.message);
-      console.error('오류 스택:', error.stack);
       setMemos([]);
     } finally {
       // 로딩 상태 해제
@@ -291,7 +255,7 @@ function Home() {
                 }, 300);
               }
             } catch (locationError) {
-              console.log('현재 위치 가져오기 실패, 기본 위치 유지:', locationError);
+              // 현재 위치 가져오기 실패 시 기본 위치 유지
             }
           }, 1000); // 1초 후 백그라운드에서 실행
         } else {
@@ -317,7 +281,7 @@ function Home() {
                 }
               }
             } catch (error) {
-              console.log('권한 요청 실패:', error);
+              // 권한 요청 실패 시 무시
             }
           }, 1000); // 1초 후 백그라운드에서 실행
         }
@@ -334,11 +298,10 @@ function Home() {
               setLocation(newLocation.coords);
             }
           ).catch(error => {
-            console.log('위치 감지 설정 실패:', error);
+            // 위치 감지 설정 실패 시 무시
           });
         }
       } catch (error) {
-        console.log('위치 초기화 오류:', error);
         // 오류 발생 시 기본 위치 사용
         const defaultLocation = { latitude: 37.5665, longitude: 126.9780 };
         setLocation(defaultLocation);
@@ -350,31 +313,24 @@ function Home() {
     
     // 위치 초기화 실행 (비동기로 처리)
     initializeLocationImmediately().then(() => {
-      const locationEndTime = performance.now();
-      console.log(`위치 초기화 완료: ${(locationEndTime - startTime).toFixed(2)}ms`);
-      
-              // 위치 초기화가 완료된 후 로딩 상태 해제 (500ms로 단축)
-        setTimeout(() => {
-          setIsInitializing(false);
-          
-          // 초기 지도 경계 설정 및 메모 조회
-          if (location) {
-            const initialBounds = {
-              lat1: location.latitude + 0.005,
-              lon1: location.longitude - 0.005,
-              lat2: location.latitude - 0.005,
-              lon2: location.longitude + 0.005,
+      // 위치 초기화가 완료된 후 로딩 상태 해제 (500ms로 단축)
+      setTimeout(() => {
+        setIsInitializing(false);
+        
+        // 초기 지도 경계 설정 및 메모 조회
+        if (location) {
+          const initialBounds = {
+            lat1: location.latitude + 0.005,
+            lon1: location.longitude - 0.005,
+            lat2: location.latitude - 0.005,
+            lon2: location.longitude + 0.005,
             };
-            setMapBounds(initialBounds);
-            
-            // 현재 필터에 맞는 메모 조회
-            console.log('초기 메모 조회 시작 - 필터:', filter);
-            fetchAllMemos(initialBounds);
-          }
+          setMapBounds(initialBounds);
           
-          const endTime = performance.now();
-          console.log(`전체 로딩 화면 표시: ${(endTime - startTime).toFixed(2)}ms (실제 초기화: ${(locationEndTime - startTime).toFixed(2)}ms)`);
-        }, 500); // 1초 → 500ms로 단축
+          // 현재 필터에 맞는 메모 조회
+          fetchAllMemos(initialBounds);
+        }
+      }, 500); // 1초 → 500ms로 단축
     });
     
   }, []);
@@ -431,11 +387,11 @@ function Home() {
           try {
             const { status } = await Location.getForegroundPermissionsAsync();
             if (status === 'granted') {
-                          const loc = await Location.getCurrentPositionAsync({
-              accuracy: Location.Accuracy.Balanced, // Balanced 정확도로 정확도 향상
-              timeout: 1500, // 2초 → 1.5초로 단축
-              maximumAge: 300000, // 30초 → 5분으로 증가하여 캐시 활용
-            });
+              const loc = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced, // Balanced 정확도로 정확도 향상
+                timeout: 1500, // 2초 → 1.5초로 단축
+                maximumAge: 300000, // 30초 → 5분으로 증가하여 캐시 활용
+              });
               setLocation(loc.coords);
               
               if (mapRef.current) {
@@ -448,7 +404,7 @@ function Home() {
               }
             }
           } catch (error) {
-            console.log('빠른 위치 업데이트 실패:', error);
+            // 위치 업데이트 실패 시 무시
           }
         };
         
@@ -483,7 +439,6 @@ function Home() {
     // 지도 이동이 끝난 후 메모 조회 (디바운싱)
     clearTimeout(mapRegionChangeTimeout.current);
     mapRegionChangeTimeout.current = setTimeout(() => {
-      console.log('지도 경계 변경으로 메모 조회 시작:', bounds);
       fetchAllMemos(bounds);
     }, 500);
   }, [fetchAllMemos]);
@@ -493,10 +448,7 @@ function Home() {
 
   // 백엔드에서 이미 필터링된 메모를 제공하므로 클라이언트 사이드 필터링 불필요
   
-  // 메모 상태 변경 시 로그 출력
-  useEffect(() => {
-    console.log(`백엔드에서 제공된 메모: ${filter} 필터, 총 ${memos.length}개 메모`);
-  }, [memos, filter]);
+
 
   // 이벤트 핸들러들을 useCallback으로 최적화
   const handleMemoManagerPress = useCallback(() => {
@@ -506,15 +458,7 @@ function Home() {
 
 
   const handleMemoPress = useCallback((memo) => {
-    console.log('=== 메모 클릭 이벤트 시작 ===');
-    console.log('클릭된 메모 객체:', memo);
-    console.log('메모 ID:', memo?.id);
-    console.log('메모 제목:', memo?.title);
-    console.log('navigation 객체 존재 여부:', !!navigation);
-    console.log('navigation.navigate 함수 존재 여부:', !!navigation.navigate);
-    
     if (!memo?.id) {
-      console.error('메모 ID가 없습니다!');
       return;
     }
     
@@ -524,19 +468,14 @@ function Home() {
         memoId: memo.id,
         memo: memo // 기존 메모 데이터도 함께 전달 (필요시 사용)
       });
-      console.log('✅ MemoView 네비게이션 성공');
     } catch (error) {
-      console.error('❌ MemoView 네비게이션 실패:', error);
+      // 네비게이션 실패 시 무시
     }
   }, [navigation]);
 
   // 필터 변경 시 서버에 뷰 설정 업데이트
   const handleFilterChange = useCallback(async (newFilter) => {
     try {
-      console.log(`=== 필터 변경 시작 ===`);
-      console.log(`이전 필터: ${filter} → 새 필터: ${newFilter}`);
-      console.log(`현재 userToken 존재 여부:`, !!userToken);
-      
       // 로딩 상태 표시
       setMemos([]);
       setIsLoadingMemos(true);
@@ -557,25 +496,11 @@ function Home() {
           viewSetting = 'all';
       }
 
-      console.log(`서버에 요청할 view_setting: ${viewSetting}`);
-
       // 필터 변경 시 즉시 메모 조회
       if (userToken) {
-        console.log('=== 메모 조회 시작 ===');
-        console.log('토큰 길이:', userToken.length);
-        console.log('토큰 시작 부분:', userToken.substring(0, 20) + '...');
-        
         const response = await getAllMemos(userToken, viewSetting);
-        console.log('=== API 응답 받음 ===');
-        console.log('응답 전체:', response);
-        console.log('응답 success:', response.success);
-        console.log('응답 data 존재 여부:', !!response.data);
-        console.log('응답 data 길이:', response.data ? response.data.length : 'undefined');
         
         if (response.success && response.data) {
-          console.log(`메모 조회 성공: ${response.data.length}개 메모`);
-          console.log('첫 번째 메모 샘플:', response.data[0]);
-          
           // API 응답 구조에 맞춰 메모 데이터 변환
           const transformedMemos = response.data.map(memo => ({
             id: memo.memoId,
@@ -592,44 +517,29 @@ function Home() {
           }));
           
           setMemos(transformedMemos);
-          console.log('변환된 메모 데이터:', transformedMemos.length, '개');
-          console.log('변환된 첫 번째 메모:', transformedMemos[0]);
         } else {
-          console.warn('=== 메모 조회 실패 ===');
-          console.warn('응답 success가 false이거나 data가 없음');
-          console.warn('전체 응답:', response);
           setMemos([]);
         }
       } else {
-        console.warn('=== 메모 조회 조건 미충족 ===');
-        console.warn('userToken 존재 여부:', !!userToken);
-        if (userToken) {
-          console.warn('userToken 길이:', userToken.length);
-        }
         setMemos([]);
       }
 
       // 뷰 설정 업데이트
       if (userToken) {
         try {
-          console.log('뷰 설정 업데이트 시작...');
           const response = await updateViewSettings(viewSetting, userToken);
-          if (response.success) {
-            console.log('뷰 설정 업데이트 성공');
-          } else {
-            console.error('뷰 설정 업데이트 실패:', response.error);
+          if (!response.success) {
+            // 뷰 설정 업데이트 실패 시 무시
           }
         } catch (error) {
-          console.error('뷰 설정 업데이트 중 오류:', error);
+          // 뷰 설정 업데이트 중 오류 시 무시
         }
       }
 
       // 로컬 필터 상태 업데이트
       setFilter(newFilter);
-      console.log(`필터 변경 완료: ${newFilter}`);
       
     } catch (error) {
-      console.error('필터 변경 중 오류:', error);
       // 오류 발생 시에도 로컬에서 필터 변경
       setFilter(newFilter);
       setMemos([]);
@@ -672,7 +582,7 @@ function Home() {
   return (
     <View style={{ flex: 1 }}>
       {/* StatusBar 설정 - 어두운 텍스트 */}
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={false} />
+
       
       {/* MemoModal 제거 - Profile의 memoView 사용 */}
 
