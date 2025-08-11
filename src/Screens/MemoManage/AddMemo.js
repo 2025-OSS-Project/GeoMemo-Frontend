@@ -13,6 +13,7 @@ import {
   Platform
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Entypo } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createMemo } from '../../config/api';
@@ -20,6 +21,7 @@ import * as Location from 'expo-location';
 
 export default function AddMemo() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [location, setLocation] = useState('');
@@ -32,15 +34,12 @@ export default function AddMemo() {
 
   // 들여쓰기 처리 함수
   const handleContentChange = (text) => {
-    // 탭 키나 특수 문자로 들여쓰기 시뮬레이션
     let processedText = text;
     
-    // 줄바꿈 후 자동 들여쓰기 (선택사항)
     if (text.endsWith('\n')) {
       const lines = text.split('\n');
       const lastLine = lines[lines.length - 1];
       if (lastLine.trim() === '') {
-        // 빈 줄이면 이전 줄의 들여쓰기 수준 유지
         const previousLine = lines[lines.length - 2] || '';
         const indentLevel = (previousLine.match(/^(\s*)/) || [''])[0].length;
         if (indentLevel > 0) {
@@ -63,15 +62,6 @@ export default function AddMemo() {
       minute: '2-digit'
     });
   };
-
-  // 화면 전환 시 배경색 즉시 설정
-  useEffect(() => {
-    // 화면이 마운트되자마자 배경색을 흰색으로 설정
-    const timer = setTimeout(() => {
-      // 강제로 리렌더링하여 배경색 적용
-    }, 0);
-    return () => clearTimeout(timer);
-  }, []);
 
   // 현재 위치 가져오기
   useEffect(() => {
@@ -99,7 +89,6 @@ export default function AddMemo() {
         
         if (addressResponse.length > 0) {
           const address = addressResponse[0];
-          // 더 상세한 주소 정보 구성
           const addressParts = [
             address.country,
             address.region,
@@ -114,12 +103,10 @@ export default function AddMemo() {
           if (locationNameStr) {
             setLocationName(locationNameStr);
           } else {
-            // 주소 정보가 없으면 좌표로 대체
             const coordStr = `위도: ${location.coords.latitude.toFixed(6)}, 경도: ${location.coords.longitude.toFixed(6)}`;
             setLocationName(coordStr);
           }
         } else {
-          // 주소 변환 실패 시 좌표 정보 사용
           const coordStr = `위도: ${location.coords.latitude.toFixed(6)}, 경도: ${location.coords.longitude.toFixed(6)}`;
           setLocationName(coordStr);
         }
@@ -143,7 +130,6 @@ export default function AddMemo() {
     setIsLoading(true);
     
     try {
-      // API 명세서에 맞는 데이터 구조
       const memoData = {
         content: content.trim(),
         title: title.trim() || '제목 없음',
@@ -159,9 +145,7 @@ export default function AddMemo() {
       console.log('POST /api/memo/');
       console.log('Request Body:', JSON.stringify(memoData, null, 2));
 
-      // 저장된 토큰 가져오기
       const userToken = await AsyncStorage.getItem('userToken');
-      
       const result = await createMemo(memoData, userToken);
       console.log('Response:', JSON.stringify(result, null, 2));
       
@@ -177,117 +161,115 @@ export default function AddMemo() {
   };
 
   return (
-    <View style={styles.safeContainer}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <KeyboardAvoidingView 
-        style={styles.container} 
+        style={styles.keyboardContainer} 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-      <TouchableWithoutFeedback onPress={() => {
-        Keyboard.dismiss();
-        // 포커스 해제
-        if (contentRef.current) {
-          contentRef.current.blur();
-        }
-      }}>
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="never"
-          showsVerticalScrollIndicator={false}
-          automaticallyAdjustKeyboardInsets={true}
-        >
-          <View style={styles.inputRow}>
-            <Text style={styles.timeBox}>{formatCurrentTime()}</Text>
-            <TextInput
-              placeholder="제목을 입력하세요"
-              placeholderTextColor="#999"
-              value={title}
-              onChangeText={setTitle}
-              style={styles.titleInput}
-              returnKeyType="next"
-            />
-          </View>
+        <TouchableWithoutFeedback onPress={() => {
+          Keyboard.dismiss();
+          if (contentRef.current) {
+            contentRef.current.blur();
+          }
+        }}>
+          <ScrollView 
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="never"
+            showsVerticalScrollIndicator={false}
+            automaticallyAdjustKeyboardInsets={true}
+          >
+            <View style={styles.inputRow}>
+              <Text style={styles.timeBox}>{formatCurrentTime()}</Text>
+              <TextInput
+                placeholder="제목을 입력하세요"
+                placeholderTextColor="#999"
+                value={title}
+                onChangeText={setTitle}
+                style={styles.titleInput}
+                returnKeyType="next"
+              />
+            </View>
 
-          <View style={styles.inputRow}>
-            <TextInput
-              placeholder="위치를 입력하세요"
-              placeholderTextColor="#999"
-              value={location}
-              onChangeText={setLocation}
-              style={styles.locationInput}
-              returnKeyType="next"
-            />
-            <TextInput
-              placeholder="카테고리를 입력하세요"
-              placeholderTextColor="#999"
-              value={category}
-              onChangeText={setCategory}
-              style={styles.categoryInput}
-              returnKeyType="next"
-            />
-          </View>
-          
-          {/* 현재 위치 상태 표시 */}
-          <View style={styles.locationStatus}>
-            <Text style={styles.locationStatusText}>
-              현재 주소: {currentLocation ? 
-                (locationName || '주소 변환 중...') : 
-                '위치 정보 가져오는 중...'
-              }
-            </Text>
-          </View>
-
-          <TextInput
-            ref={contentRef}
-            style={styles.contentInput}
-            multiline
-            value={content}
-            onChangeText={handleContentChange}
-            placeholder="메모를 입력하세요"
-            placeholderTextColor="#999"
-            returnKeyType="default"
-            blurOnSubmit={false}
-            textAlignVertical="top"
-            scrollEnabled={true}
-            autoCapitalize="sentences"
-            autoCorrect={true}
-            spellCheck={true}
-          />
-
-          <View style={styles.footer}>
-            <TouchableOpacity onPress={() => setIsPublic(!isPublic)}>
-              <View style={styles.footerBtn}>
-                {isPublic ? 
-                  <Entypo name="eye" size={24} color="black" /> : 
-                  <Entypo name="eye-with-line" size={24} color="black" />
+            <View style={styles.inputRow}>
+              <TextInput
+                placeholder="위치를 입력하세요"
+                placeholderTextColor="#999"
+                value={location}
+                onChangeText={setLocation}
+                style={styles.locationInput}
+                returnKeyType="next"
+              />
+              <TextInput
+                placeholder="카테고리를 입력하세요"
+                placeholderTextColor="#999"
+                value={category}
+                onChangeText={setCategory}
+                style={styles.categoryInput}
+                returnKeyType="next"
+              />
+            </View>
+            
+            <View style={styles.locationStatus}>
+              <Text style={styles.locationStatusText}>
+                현재 주소: {currentLocation ? 
+                  (locationName || '주소 변환 중...') : 
+                  '위치 정보 가져오는 중...'
                 }
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              onPress={handleSaveMemo}
-              disabled={isLoading}
-              style={[styles.footerBtn, isLoading && styles.disabledBtn]}
-            >
-              <Text style={styles.footerBtnText}>
-                {isLoading ? '저장 중...' : '저장'}
               </Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </TouchableWithoutFeedback>
+            </View>
+
+            <TextInput
+              ref={contentRef}
+              style={styles.contentInput}
+              multiline
+              value={content}
+              onChangeText={handleContentChange}
+              placeholder="메모를 입력하세요"
+              placeholderTextColor="#999"
+              returnKeyType="default"
+              blurOnSubmit={false}
+              textAlignVertical="top"
+              scrollEnabled={true}
+              autoCapitalize="sentences"
+              autoCorrect={true}
+              spellCheck={true}
+            />
+
+            <View style={styles.footer}>
+              <TouchableOpacity onPress={() => setIsPublic(!isPublic)}>
+                <View style={styles.footerBtn}>
+                  {isPublic ? 
+                    <Entypo name="eye" size={24} color="black" /> : 
+                    <Entypo name="eye-with-line" size={24} color="black" />
+                  }
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                onPress={handleSaveMemo}
+                disabled={isLoading}
+                style={[styles.footerBtn, isLoading && styles.disabledBtn]}
+              >
+                <Text style={styles.footerBtnText}>
+                  {isLoading ? '저장 중...' : '저장'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeContainer: {
+  container: {
     flex: 1,
     backgroundColor: '#fff',
   },
-  container: { 
+  keyboardContainer: { 
     flex: 1,
     backgroundColor: '#fff',
   },
@@ -297,7 +279,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     flexGrow: 1,
-    paddingBottom: 100, // 키보드가 올라올 때 여유 공간 확보
+    paddingBottom: 140,
   },
   inputRow: { 
     flexDirection: 'row', 
@@ -347,7 +329,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 10,
-    marginTop: 'auto',
+    marginTop: 20,
   },
   footerBtn: {
     paddingHorizontal: 12,
@@ -363,11 +345,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#999',
   },
   locationStatus: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     paddingVertical: 8,
     backgroundColor: '#f8f8f8',
     borderRadius: 8,
-    marginHorizontal: 16,
+    marginHorizontal: 0,
     marginBottom: 10,
   },
   locationStatusText: {

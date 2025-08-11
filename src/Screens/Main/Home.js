@@ -14,30 +14,54 @@ import {
   StatusBar
 } from 'react-native';
 import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { Magnetometer } from 'expo-sensors';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
+import { Ionicons, FontAwesome, FontAwesome5, Entypo } from '@expo/vector-icons';
 import MapSection from './MapSection';
 import SlidePanel from './SlidePanel';
 import RouteBox from './RouteBox';
+import { getAllMemos, updateViewSettings } from '../../config/api';
 // MemoModal import 제거 - Profile의 memoView 사용
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
-const SLIDE_HEIGHT = 400
+const SLIDE_HEIGHT = Math.floor(Dimensions.get('window').height * 0.4); // 화면 높이의 40%
 
 function Home() {
   const navigation = useNavigation();
   const route = useRoute();
+  const insets = useSafeAreaInsets();
   const [location, setLocation] = useState(null);
   const [heading, setHeading] = useState(0);
-  const [filter, setFilter] = useState("me");
+  const [filter, setFilter] = useState("all");
   const [memos, setMemos] = useState([]);
   const [myUser, setMyUser] = useState(null);
   const [followingIds, setFollowingIds] = useState([]);
   const [isInitializing, setIsInitializing] = useState(true);
-
+  const [mapBounds, setMapBounds] = useState(null);
+  const [userToken, setUserToken] = useState(null);
+  const [isLoadingMemos, setIsLoadingMemos] = useState(false);
+  
   // 스피너 애니메이션을 위한 Animated Value
   const spinValue = useRef(new Animated.Value(0)).current;
+
+  // 토큰 가져오기
+  const fetchUserToken = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (token) {
+        setUserToken(token);
+      }
+    } catch (error) {
+      // 토큰 로드 실패 시 무시
+    }
+  };
+
+  // 사용자 토큰 가져오기
+  useEffect(() => {
+    fetchUserToken();
+  }, []);
 
   // 스피너 회전 애니메이션 시작 (더 빠른 회전)
   useEffect(() => {
@@ -55,15 +79,9 @@ function Home() {
 
   // memoView 사용을 위한 state
   const [selectedMemo, setSelectedMemo] = useState(null);
-  const exampleMemo = {
-    number: 1,
-    time: '12:34',
-    title: '테스트 메모',
-    content: '이것은 memoView 디자인 테스트용 예시입니다.',
-  };
 
   const mapRef = useRef(null);
-  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT - 120)).current;
+  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT - SLIDE_HEIGHT)).current;
   const routeSlideAnim = useRef(new Animated.Value(0)).current;
   const routeSlideAnimValue = useRef(0); // 현재 값을 추적하기 위한 ref
   const [routeVisible, setRouteVisible] = useState(true);
@@ -76,9 +94,6 @@ function Home() {
     setDestination({ latitude: 37.5665, longitude: 126.9780 });
   }, []);
 
-  const myUserId = "USER_123";
-  const myProfileImage = "https://example.com/me.jpg";
-
   // API 함수들 (현재는 사용하지 않음 - 즉시 반환)
   const fetchCurrentUser = useCallback(() => {
     return Promise.resolve({ id: 'USER_123', name: '사용자' });
@@ -88,20 +103,76 @@ function Home() {
     return Promise.resolve([]);
   }, []);
 
-  const fetchAllMemos = useCallback(() => {
-    return Promise.resolve([]);
-  }, []);
+  const fetchAllMemos = useCallback(async (bounds) => {
+    try {
+      if (!userToken) {
+        return;
+      }
+      
+      // 로딩 상태 시작
+      setIsLoadingMemos(true);
+      
+      // 현재 필터에 맞는 view_setting 값 매핑
+      let viewSetting;
+      switch (filter) {
+        case 'all':
+          viewSetting = 'all';
+          break;
+        case 'following':
+          viewSetting = 'follows';
+          break;
+        case 'me':
+          viewSetting = 'self';
+          break;
+        default:
+          viewSetting = 'all';
+      }
+      
+      const response = await getAllMemos(userToken, viewSetting);
+      
+      if (response.success && response.data) {
+        // API 응답 구조에 맞춰 메모 데이터 변환
+        const transformedMemos = response.data.map(memo => ({
+          id: memo.memoId,
+          title: memo.title,
+          content: memo.content,
+          lat: memo.location?.latitude || memo.latitude,
+          lng: memo.location?.longitude || memo.longitude,
+          userId: memo.user?.userId,
+          userName: memo.user?.username,
+          profileImage: memo.user?.photoUrl,
+          createdAt: memo.createdAt,
+          isPublic: memo.isPublic,
+          fileUrl: memo.fileUrl
+        }));
+        
+        setMemos(transformedMemos);
+      } else {
+        setMemos([]);
+      }
+    } catch (error) {
+      setMemos([]);
+    } finally {
+      // 로딩 상태 해제
+      setIsLoadingMemos(false);
+    }
+  }, [userToken, filter]);
 
   // 슬라이드 패널을 위한 panResponder
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dy) > 10,
       onPanResponderMove: (_, gesture) => {
-        slideAnim.setValue(Math.max(120, Math.min(SCREEN_HEIGHT, gesture.moveY)));
+        // 슬라이드 제한 (안전 영역은 위치 계산에만 사용)
+        const minTop = SCREEN_HEIGHT - SLIDE_HEIGHT; // 최소 상단 위치 (패널이 완전히 보이는 상태)
+        const maxTop = SCREEN_HEIGHT - 120; // 최대 상단 위치 (패널이 거의 숨겨진 상태)
+        
+        const newTop = Math.max(minTop, Math.min(maxTop, gesture.moveY));
+        slideAnim.setValue(newTop);
       },
       onPanResponderRelease: (_, gesture) => {
         Animated.spring(slideAnim, {
-          toValue: gesture.dy > 50 ? SCREEN_HEIGHT - 120 : SCREEN_HEIGHT - SLIDE_HEIGHT,
+                      toValue: gesture.dy > 50 ? SCREEN_HEIGHT - 120 : SCREEN_HEIGHT - SLIDE_HEIGHT,
           useNativeDriver: false,
         }).start();
       },
@@ -152,9 +223,11 @@ function Home() {
     const startTime = performance.now();
     
     // 1단계: 즉시 기본 데이터 설정 (UI 블로킹 없음)
-    setMyUser({ id: 'USER_123', name: '사용자' });
     setMemos([]);
     setFollowingIds([]);
+    
+    // 토큰 가져오기
+    fetchUserToken();
     
     // 2단계: 위치 정보 즉시 초기화 (권한 체크와 동시에)
     const initializeLocationImmediately = async () => {
@@ -187,7 +260,7 @@ function Home() {
                 }, 300);
               }
             } catch (locationError) {
-              console.log('현재 위치 가져오기 실패, 기본 위치 유지:', locationError);
+              // 현재 위치 가져오기 실패 시 기본 위치 유지
             }
           }, 1000); // 1초 후 백그라운드에서 실행
         } else {
@@ -213,7 +286,7 @@ function Home() {
                 }
               }
             } catch (error) {
-              console.log('권한 요청 실패:', error);
+              // 권한 요청 실패 시 무시
             }
           }, 1000); // 1초 후 백그라운드에서 실행
         }
@@ -230,11 +303,10 @@ function Home() {
               setLocation(newLocation.coords);
             }
           ).catch(error => {
-            console.log('위치 감지 설정 실패:', error);
+            // 위치 감지 설정 실패 시 무시
           });
         }
       } catch (error) {
-        console.log('위치 초기화 오류:', error);
         // 오류 발생 시 기본 위치 사용
         const defaultLocation = { latitude: 37.5665, longitude: 126.9780 };
         setLocation(defaultLocation);
@@ -246,14 +318,23 @@ function Home() {
     
     // 위치 초기화 실행 (비동기로 처리)
     initializeLocationImmediately().then(() => {
-      const locationEndTime = performance.now();
-      console.log(`위치 초기화 완료: ${(locationEndTime - startTime).toFixed(2)}ms`);
-      
       // 위치 초기화가 완료된 후 로딩 상태 해제 (500ms로 단축)
       setTimeout(() => {
         setIsInitializing(false);
-        const endTime = performance.now();
-        console.log(`전체 로딩 화면 표시: ${(endTime - startTime).toFixed(2)}ms (실제 초기화: ${(locationEndTime - startTime).toFixed(2)}ms)`);
+        
+        // 초기 지도 경계 설정 및 메모 조회
+        if (location) {
+          const initialBounds = {
+            lat1: location.latitude + 0.005,
+            lon1: location.longitude - 0.005,
+            lat2: location.latitude - 0.005,
+            lon2: location.longitude + 0.005,
+            };
+          setMapBounds(initialBounds);
+          
+          // 현재 필터에 맞는 메모 조회
+          fetchAllMemos(initialBounds);
+        }
       }, 500); // 1초 → 500ms로 단축
     });
     
@@ -311,11 +392,11 @@ function Home() {
           try {
             const { status } = await Location.getForegroundPermissionsAsync();
             if (status === 'granted') {
-                          const loc = await Location.getCurrentPositionAsync({
-              accuracy: Location.Accuracy.Balanced, // Balanced 정확도로 정확도 향상
-              timeout: 1500, // 2초 → 1.5초로 단축
-              maximumAge: 300000, // 30초 → 5분으로 증가하여 캐시 활용
-            });
+              const loc = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced, // Balanced 정확도로 정확도 향상
+                timeout: 1500, // 2초 → 1.5초로 단축
+                maximumAge: 300000, // 30초 → 5분으로 증가하여 캐시 활용
+              });
               setLocation(loc.coords);
               
               if (mapRef.current) {
@@ -328,7 +409,7 @@ function Home() {
               }
             }
           } catch (error) {
-            console.log('빠른 위치 업데이트 실패:', error);
+            // 위치 업데이트 실패 시 무시
           }
         };
         
@@ -348,26 +429,166 @@ function Home() {
     }
   }, [location]);
 
-  // 메모 필터링을 useMemo로 최적화
-  const filteredMemos = useMemo(() => {
-    return memos.filter(memo => {
-      if (filter === "me") {
-        return memo.userId === myUserId;
-      } else if (filter === "following") {
-        return followingIds.includes(memo.userId);
-      }
-      return true;
+  // 지도 경계 변경 시 메모 조회 (실시간 추적)
+  const onMapRegionChange = useCallback((region) => {
+    console.log('=== onMapRegionChange 호출됨 ===');
+    console.log('region:', {
+      latitude: parseFloat(region.latitude.toFixed(7)),
+      longitude: parseFloat(region.longitude.toFixed(7)),
+      latitudeDelta: parseFloat(region.latitudeDelta.toFixed(7)),
+      longitudeDelta: parseFloat(region.longitudeDelta.toFixed(7))
     });
-  }, [memos, filter, myUserId, followingIds]);
+    
+    // 지도 경계 계산 (북서쪽과 남동쪽 좌표)
+    const bounds = {
+      northWest: {
+        latitude: region.latitude + region.latitudeDelta / 2, // 북쪽 위도
+        longitude: region.longitude - region.longitudeDelta / 2, // 서쪽 경도
+      },
+      southEast: {
+        latitude: region.latitude - region.latitudeDelta / 2, // 남쪽 위도
+        longitude: region.longitude + region.longitudeDelta / 2, // 동쪽 경도
+      }
+    };
+    
+    console.log('계산된 bounds:', bounds);
+    
+    // 실시간으로 화면에 보이는 위치값 업데이트 (API 호출은 하지 않음)
+    setMapBounds(bounds);
+  }, []);
+
+  // 지도 조작 완료 시 메모 조회 (손을 뗐을 때)
+  const onMapRegionChangeComplete = useCallback((region) => {
+    console.log('=== onMapRegionChangeComplete 호출됨 ===');
+    console.log('region:', {
+      latitude: parseFloat(region.latitude.toFixed(7)),
+      longitude: parseFloat(region.longitude.toFixed(7)),
+      latitudeDelta: parseFloat(region.latitudeDelta.toFixed(7)),
+      longitudeDelta: parseFloat(region.longitudeDelta.toFixed(7))
+    });
+    
+    // 지도 경계 계산 (북서쪽과 남동쪽 좌표)
+    const bounds = {
+      northWest: {
+        latitude: region.latitude + region.latitudeDelta / 2, // 북쪽 위도
+        longitude: region.longitude - region.longitudeDelta / 2, // 서쪽 경도
+      },
+      southEast: {
+        latitude: region.latitude - region.latitudeDelta / 2, // 남쪽 위도
+        longitude: region.longitude + region.longitudeDelta / 2, // 동쪽 경도
+      }
+    };
+    
+    console.log('최종 bounds:', bounds);
+    
+    // 지도 경계 업데이트 (SlidePanel에서 API 호출)
+    setMapBounds(bounds);
+    
+    // 기존의 fetchAllMemos 호출 제거 - SlidePanel에서 처리
+  }, []);
+
+  // 백엔드에서 이미 필터링된 메모를 제공하므로 클라이언트 사이드 필터링 불필요
+  
+
 
   // 이벤트 핸들러들을 useCallback으로 최적화
   const handleMemoManagerPress = useCallback(() => {
     navigation.navigate('MemoManager');
   }, [navigation]);
 
+
+
   const handleMemoPress = useCallback((memo) => {
-    setSelectedMemo(memo);
-  }, []);
+    if (!memo?.id) {
+      return;
+    }
+    
+    try {
+      // MemoView로 네비게이션하면서 메모 ID 전달
+      navigation.navigate('MemoView', { 
+        memoId: memo.id,
+        memo: memo // 기존 메모 데이터도 함께 전달 (필요시 사용)
+      });
+    } catch (error) {
+      // 네비게이션 실패 시 무시
+    }
+  }, [navigation]);
+
+  // 필터 변경 시 서버에 뷰 설정 업데이트
+  const handleFilterChange = useCallback(async (newFilter) => {
+    try {
+      // 로딩 상태 표시
+      setMemos([]);
+      setIsLoadingMemos(true);
+      
+      // API 명세서에 맞춰 view_setting 값 매핑
+      let viewSetting;
+      switch (newFilter) {
+        case 'all':
+          viewSetting = 'all';
+          break;
+        case 'following':
+          viewSetting = 'follows';
+          break;
+        case 'me':
+          viewSetting = 'self';
+          break;
+        default:
+          viewSetting = 'all';
+      }
+
+      // 필터 변경 시 즉시 메모 조회
+      if (userToken) {
+        const response = await getAllMemos(userToken, viewSetting);
+        
+        if (response.success && response.data) {
+          // API 응답 구조에 맞춰 메모 데이터 변환
+          const transformedMemos = response.data.map(memo => ({
+            id: memo.memoId,
+            title: memo.title,
+            content: memo.content,
+            lat: memo.location?.latitude || memo.latitude,
+            lng: memo.location?.longitude || memo.longitude,
+            userId: memo.user?.userId,
+            userName: memo.user?.username,
+            profileImage: memo.user?.photoUrl,
+            createdAt: memo.createdAt,
+            isPublic: memo.isPublic,
+            fileUrl: memo.fileUrl
+          }));
+          
+          setMemos(transformedMemos);
+        } else {
+          setMemos([]);
+        }
+      } else {
+        setMemos([]);
+      }
+
+      // 뷰 설정 업데이트
+      if (userToken) {
+        try {
+          const response = await updateViewSettings(viewSetting, userToken);
+          if (!response.success) {
+            // 뷰 설정 업데이트 실패 시 무시
+          }
+        } catch (error) {
+          // 뷰 설정 업데이트 중 오류 시 무시
+        }
+      }
+
+      // 로컬 필터 상태 업데이트
+      setFilter(newFilter);
+      
+    } catch (error) {
+      // 오류 발생 시에도 로컬에서 필터 변경
+      setFilter(newFilter);
+      setMemos([]);
+    } finally {
+      // 로딩 상태 해제
+      setIsLoadingMemos(false);
+    }
+  }, [userToken, filter]);
 
   // 초기화 중일 때 스켈레톤 UI 표시
   if (isInitializing) {
@@ -402,7 +623,7 @@ function Home() {
   return (
     <View style={{ flex: 1 }}>
       {/* StatusBar 설정 - 어두운 텍스트 */}
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
+
       
       {/* MemoModal 제거 - Profile의 memoView 사용 */}
 
@@ -415,6 +636,9 @@ function Home() {
         filter={filter}
         myUser={myUser}
         followingIds={followingIds}
+        onMapRegionChange={onMapRegionChange}
+        onMapRegionChangeComplete={onMapRegionChangeComplete}
+        onPressMemo={handleMemoPress}
       />
 
       <View style={styles.topBar}>
@@ -434,21 +658,25 @@ function Home() {
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.compassBtn} onPress={goToCurrentLocation}>
-        <Ionicons name="navigate-circle-outline" size={24} color="black" />
+      <Entypo name="location" size={24} color="black" />
       </TouchableOpacity>
 
       <SlidePanel
         slideAnim={slideAnim}
         panResponder={panResponder}
-        memos={filteredMemos}
+        memos={memos}
         filter={filter}
-        setFilter={setFilter}
-        myUserId={myUserId}
-        myProfileImage={myProfileImage}
+        setFilter={handleFilterChange}
+        myUserId={myUser?.id}
+        myProfileImage={myUser?.profileImage}
         followingIds={followingIds}
         myUser={myUser}
         onPressMemo={handleMemoPress}
         SLIDE_HEIGHT={SLIDE_HEIGHT}
+        isLoadingMemos={isLoadingMemos}
+        mapBounds={mapBounds} // 지도 경계 추가
+        userToken={userToken} // 사용자 토큰 추가
+        onMemosUpdate={setMemos} // 메모 업데이트 콜백 추가
       />
     </View>
   );
@@ -476,23 +704,39 @@ const styles = StyleSheet.create({
 
   myMemoManage: {
     position: 'absolute',
-    top: 150,
+    top: 170,
     right: 20,
-    backgroundColor: '#fff',
-    borderRadius: 25,
-    padding: 10,
-    elevation: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderTopLeftRadius: 15,
+    borderBottomLeftRadius: 0,
+    borderTopRightRadius: 15,
+    borderBottomRightRadius: 0,
+    padding: 12,
     zIndex: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   compassBtn: {
     position: 'absolute',
-    top: 200,
+    top: 220,
     right: 20,
-    backgroundColor: '#fff',
-    borderRadius: 25,
-    padding: 10,
-    elevation: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 15,
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 15,
+    padding: 12,
     zIndex: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   memoCard: {
     flexDirection: 'row',

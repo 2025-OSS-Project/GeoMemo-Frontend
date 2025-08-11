@@ -78,7 +78,7 @@ export default function OtherProfile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 30,
+    paddingTop: 10,
     paddingHorizontal: 20,
     backgroundColor: '#fff',
   },
