@@ -58,6 +58,11 @@ function Home() {
     }
   };
 
+  // 사용자 토큰 가져오기
+  useEffect(() => {
+    fetchUserToken();
+  }, []);
+
   // 스피너 회전 애니메이션 시작 (더 빠른 회전)
   useEffect(() => {
     const spinAnimation = Animated.loop(
@@ -424,27 +429,63 @@ function Home() {
     }
   }, [location]);
 
-  // 지도 경계 변경 시 메모 조회
+  // 지도 경계 변경 시 메모 조회 (실시간 추적)
   const onMapRegionChange = useCallback((region) => {
-    // 지도 경계 계산 (왼쪽 상단과 오른쪽 하단 좌표)
+    console.log('=== onMapRegionChange 호출됨 ===');
+    console.log('region:', {
+      latitude: parseFloat(region.latitude.toFixed(7)),
+      longitude: parseFloat(region.longitude.toFixed(7)),
+      latitudeDelta: parseFloat(region.latitudeDelta.toFixed(7)),
+      longitudeDelta: parseFloat(region.longitudeDelta.toFixed(7))
+    });
+    
+    // 지도 경계 계산 (북서쪽과 남동쪽 좌표)
     const bounds = {
-      lat1: region.latitude + region.latitudeDelta / 2, // 왼쪽 상단 위도
-      lon1: region.longitude - region.longitudeDelta / 2, // 왼쪽 상단 경도
-      lat2: region.latitude - region.latitudeDelta / 2, // 오른쪽 하단 위도
-      lon2: region.longitude + region.longitudeDelta / 2, // 오른쪽 하단 경도
+      northWest: {
+        latitude: region.latitude + region.latitudeDelta / 2, // 북쪽 위도
+        longitude: region.longitude - region.longitudeDelta / 2, // 서쪽 경도
+      },
+      southEast: {
+        latitude: region.latitude - region.latitudeDelta / 2, // 남쪽 위도
+        longitude: region.longitude + region.longitudeDelta / 2, // 동쪽 경도
+      }
     };
     
+    console.log('계산된 bounds:', bounds);
+    
+    // 실시간으로 화면에 보이는 위치값 업데이트 (API 호출은 하지 않음)
+    setMapBounds(bounds);
+  }, []);
+
+  // 지도 조작 완료 시 메모 조회 (손을 뗐을 때)
+  const onMapRegionChangeComplete = useCallback((region) => {
+    console.log('=== onMapRegionChangeComplete 호출됨 ===');
+    console.log('region:', {
+      latitude: parseFloat(region.latitude.toFixed(7)),
+      longitude: parseFloat(region.longitude.toFixed(7)),
+      latitudeDelta: parseFloat(region.latitudeDelta.toFixed(7)),
+      longitudeDelta: parseFloat(region.longitudeDelta.toFixed(7))
+    });
+    
+    // 지도 경계 계산 (북서쪽과 남동쪽 좌표)
+    const bounds = {
+      northWest: {
+        latitude: region.latitude + region.latitudeDelta / 2, // 북쪽 위도
+        longitude: region.longitude - region.longitudeDelta / 2, // 서쪽 경도
+      },
+      southEast: {
+        latitude: region.latitude - region.latitudeDelta / 2, // 남쪽 위도
+        longitude: region.longitude + region.longitudeDelta / 2, // 동쪽 경도
+      }
+    };
+    
+    console.log('최종 bounds:', bounds);
+    
+    // 지도 경계 업데이트 (SlidePanel에서 API 호출)
     setMapBounds(bounds);
     
-    // 지도 이동이 끝난 후 메모 조회 (디바운싱)
-    clearTimeout(mapRegionChangeTimeout.current);
-    mapRegionChangeTimeout.current = setTimeout(() => {
-      fetchAllMemos(bounds);
-    }, 500);
-  }, [fetchAllMemos]);
-
-  // 지도 경계 변경 타이머를 위한 ref
-  const mapRegionChangeTimeout = useRef(null);
+    // 기존의 fetchAllMemos 호출 제거 - SlidePanel에서 처리
+  }, []);
 
   // 백엔드에서 이미 필터링된 메모를 제공하므로 클라이언트 사이드 필터링 불필요
   
@@ -596,6 +637,7 @@ function Home() {
         myUser={myUser}
         followingIds={followingIds}
         onMapRegionChange={onMapRegionChange}
+        onMapRegionChangeComplete={onMapRegionChangeComplete}
         onPressMemo={handleMemoPress}
       />
 
@@ -632,6 +674,9 @@ function Home() {
         onPressMemo={handleMemoPress}
         SLIDE_HEIGHT={SLIDE_HEIGHT}
         isLoadingMemos={isLoadingMemos}
+        mapBounds={mapBounds} // 지도 경계 추가
+        userToken={userToken} // 사용자 토큰 추가
+        onMemosUpdate={setMemos} // 메모 업데이트 콜백 추가
       />
     </View>
   );

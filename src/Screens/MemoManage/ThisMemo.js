@@ -78,47 +78,54 @@ export default function ThisMemo() {
     }
 
     return (
-        <ScrollView contentContainerStyle={styles.memoList}>
+        <View style={styles.container}>
+            {/* AddMemo 버튼을 위에 고정 */}
             <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('AddMemo')}>
                 <Text style={styles.plus}>＋</Text>
             </TouchableOpacity>
             
-            {memos.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>내 메모가 없습니다</Text>
-                </View>
-            ) : (
-                memos.map((memo) => (
-                    <TouchableOpacity
-                        key={memo.memoId}
-                        style={styles.memoItem}
-                        onPress={() => navigation.navigate('ThisMemoView', { memo })}
-                    >
-                        <Text style={styles.title}>
-                            {memo.title || '제목 없음'}
-                        </Text>
-                        <View style={styles.timeLocationContainer}>
-                            <Text style={styles.timeText}>
-                                {formatDate(memo.createdAt)}
+            {/* 메모 목록만 스크롤 */}
+            <ScrollView contentContainerStyle={styles.memoList}>
+                {memos.length === 0 ? (
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>내 메모가 없습니다</Text>
+                    </View>
+                ) : (
+                    memos.map((memo) => (
+                        <TouchableOpacity
+                            key={memo.memoId}
+                            style={styles.memoItem}
+                            onPress={() => navigation.navigate('ThisMemoView', { memo })}
+                        >
+                            <Text style={styles.title}>
+                                {memo.title || '제목 없음'}
                             </Text>
-                            <Text style={styles.location} numberOfLines={1} ellipsizeMode="tail">
-                                {memo.location?.address || '위치 없음'}
+                            <View style={styles.timeLocationContainer}>
+                                <Text style={styles.timeText}>
+                                    {formatDate(memo.createdAt)}
+                                </Text>
+                                <Text style={styles.location} numberOfLines={1} ellipsizeMode="tail">
+                                    {memo.location?.address || '위치 없음'}
+                                </Text>
+                            </View>
+                            <Text style={styles.content} numberOfLines={2}>
+                                {memo.content}
                             </Text>
-                        </View>
-                        <Text style={styles.content} numberOfLines={2}>
-                            {memo.content}
-                        </Text>
-                        <Text style={styles.publicStatus}>
-                            {memo.isPublic ? '공개' : '비공개'}
-                        </Text>
-                    </TouchableOpacity>
-                ))
-            )}
-        </ScrollView>
+                            <Text style={styles.publicStatus}>
+                                {memo.isPublic ? '공개' : '비공개'}
+                            </Text>
+                        </TouchableOpacity>
+                    ))
+                )}
+            </ScrollView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
     memoList: {
         gap: 10,
         paddingBottom: 20,
@@ -201,6 +208,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         marginBottom: 15,
         marginHorizontal: 20,
+        marginTop: 10,
         borderWidth: 1,
         borderColor: '#e8e8e8',
         shadowColor: '#000',

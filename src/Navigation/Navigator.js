@@ -7,8 +7,8 @@ import UserInfoInput from '../Screens/Auth/UserInfoInput'
 import MemoMap from '../Screens/Main/Home';
 import MemoManager from '../Screens/MemoManage/MemoManager'
 import AddMemo from '../Screens/MemoManage/AddMemo'
-import ThisMemoView from '../Screens/MemoManage/ThisMemoView' 
-import AllMemoView from '../Screens/MemoManage/AllMemoView' 
+import ThisMemoView from '../Screens/MemoManage/ThisMemoView'
+import AllMemoView from '../Screens/MemoManage/AllMemoView'
 import MyProfile from '../Screens/Profile/MyProfile'
 import OtherProfile from '../Screens/Profile/OtherProfile'
 import MemoView from '../Screens/Profile/MemoView'
@@ -25,7 +25,7 @@ const Stack = createNativeStackNavigator();
 
 export default function Navigator() {
   return (
-    <Stack.Navigator 
+    <Stack.Navigator
       initialRouteName="Login"
       screenOptions={{
         animation: 'slide_from_right',
@@ -41,14 +41,14 @@ export default function Navigator() {
         gestureVelocityImpact: 0.8, // 더 빠른 제스처 반응
       }}
     >
-      <Stack.Screen name="Login" component={Login} options={{ headerShown: false }}/>
+      <Stack.Screen name="Login" component={Login} options={{ headerShown: false }} />
       <Stack.Screen name="SignUp" component={SignUp} />
       <Stack.Screen name="EmailVerification" component={EmailVerification} />
       <Stack.Screen name="UserInfoInput" component={UserInfoInput} />
-      <Stack.Screen 
-        name="MemoMap" 
-        component={MemoMap} 
-        options={{ 
+      <Stack.Screen
+        name="MemoMap"
+        component={MemoMap}
+        options={{
           headerShown: false,
           animation: 'fade',
           animationDuration: 50, // 극도로 빠른 페이드 전환
@@ -59,28 +59,22 @@ export default function Navigator() {
           unmountOnBlur: false,
         }}
       />
-      <Stack.Screen name="MemoManager" component={MemoManager} options={{ headerShown: false }}/>
-      <Stack.Screen 
-        name="AddMemo" 
-        component={AddMemo} 
-        options={{ 
-          animation: 'none',
-        }}
-      />
+      <Stack.Screen name="MemoManager" component={MemoManager} options={{ headerShown: false }} />
+      <Stack.Screen name="AddMemo" component={AddMemo}/>
       <Stack.Screen name="ThisMemoView" component={ThisMemoView} />
       <Stack.Screen name="AllMemoView" component={AllMemoView} />
-      <Stack.Screen name="MyProfile" component={MyProfile} options={{ headerShown: false }}/>
-      <Stack.Screen name="OtherProfile" component={OtherProfile} options={{ headerShown: false }}/>
-      <Stack.Screen name="MemoView" component={MemoView} options={{ headerShown: false }}/>
-      <Stack.Screen name="SettingsHome" component={SettingsHome}/>
-      <Stack.Screen name="EditProfile" component={EditProfile}/>
-      <Stack.Screen name="ChangeNickname" component={ChangeNickname}/>
-      <Stack.Screen name="ChangePassword" component={ChangePassword}/>
-      <Stack.Screen name="Follower" component={Follower}/>
-      <Stack.Screen name="Following" component={Following}/>
-      <Stack.Screen name="UserSearch" component={UserSearch} options={{ headerShown: false }}/>
+      <Stack.Screen name="MyProfile" component={MyProfile} options={{ headerShown: false }} />
+      <Stack.Screen name="OtherProfile" component={OtherProfile} options={{ headerShown: false }} />
+      <Stack.Screen name="MemoView" component={MemoView} options={{ headerShown: false }} />
+      <Stack.Screen name="SettingsHome" component={SettingsHome} />
+      <Stack.Screen name="EditProfile" component={EditProfile} />
+      <Stack.Screen name="ChangeNickname" component={ChangeNickname} />
+      <Stack.Screen name="ChangePassword" component={ChangePassword} />
+      <Stack.Screen name="Follower" component={Follower} />
+      <Stack.Screen name="Following" component={Following} />
+      <Stack.Screen name="UserSearch" component={UserSearch} options={{ headerShown: false }} />
       <Stack.Screen name="PrivacySetting" component={PrivacySetting} />
     </Stack.Navigator>
-    
+
   );
 }

@@ -14,6 +14,7 @@ export default function MapSection({
   myUser,
   followingIds,
   onMapRegionChange,
+  onMapRegionChangeComplete, // 새로운 prop 추가
   onPressMemo,
   isLoadingMemos = false,
 }) {
@@ -72,7 +73,8 @@ export default function MapSection({
         zoomTapEnabled={false}
         scrollEnabled={true}
         zoomEnabled={true}
-        onRegionChangeComplete={onMapRegionChange}
+        onRegionChange={onMapRegionChange} // 실시간 위치 추적
+        onRegionChangeComplete={onMapRegionChangeComplete} // 손을 뗐을 때 최종 위치
       >
       {/* 메모 마커 - 로딩 중이 아닐 때만 표시 */}
       {!isLoadingMemos && memos.map(memo => (

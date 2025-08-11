@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Animated, Image, StyleSheet, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -15,8 +15,167 @@ export default function SlidePanel({
   onPressMemo,
   SLIDE_HEIGHT = 300,
   isLoadingMemos = false,
+  mapBounds, // 지도 경계 추가
+  userToken, // 사용자 토큰 추가
+  onMemosUpdate, // 메모 업데이트 콜백 추가
 }) {
   const navigation = useNavigation();
+  const [localMemos, setLocalMemos] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [debouncedMapBounds, setDebouncedMapBounds] = useState(null);
+  const debounceTimeoutRef = useRef(null);
+  const prevMapBoundsRef = useRef(null);
+
+  // mapBounds 변경 시 디바운싱 적용 (실시간 위치 추적 시 API 호출 방지)
+  useEffect(() => {
+    console.log('=== SlidePanel mapBounds 변경 감지 ===');
+    console.log('새로운 mapBounds:', mapBounds);
+    console.log('이전 mapBounds:', prevMapBoundsRef.current);
+    
+    // mapBounds가 유효한지 확인
+    if (!mapBounds || !mapBounds.northWest || !mapBounds.southEast) {
+      console.log('유효하지 않은 mapBounds - 건너뜀');
+      return;
+    }
+    
+    console.log('mapBounds 변경됨 - 디바운싱 시작');
+    prevMapBoundsRef.current = mapBounds;
+    
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    // 500ms 후에 API 호출 (사용자가 지도 조작을 멈춘 후)
+    debounceTimeoutRef.current = setTimeout(() => {
+      console.log('디바운싱 완료 - debouncedMapBounds 업데이트');
+      setDebouncedMapBounds(mapBounds);
+    }, 500);
+
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, [mapBounds]);
+
+  // 직접 API 호출로 메모 가져오기 (디바운싱된 지도 경계 포함)
+  const fetchMemos = useCallback(async () => {
+    if (!debouncedMapBounds || !debouncedMapBounds.northWest || !debouncedMapBounds.southEast) {
+      return;
+    }
+    
+    if (!userToken) {
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    // API 호출 시 전달되는 값들 로그 출력
+    console.log('=== API 호출 시 전달되는 값들 ===');
+    console.log('전체 mapBounds:', debouncedMapBounds);
+    console.log('북서(northWest):', debouncedMapBounds.northWest);
+    console.log('남동(southEast):', debouncedMapBounds.southEast);
+    console.log('필터:', filter);
+    
+    try {
+      const queryParams = new URLSearchParams({
+        view_setting: filter === 'all' ? 'all' : filter === 'following' ? 'following' : filter === 'me' ? 'self' : 'all',
+        // 지도 경계 좌표 추가 (API 문서에 맞게 lat1, lon1, lat2, lon2 사용)
+        lat1: debouncedMapBounds.northWest.latitude.toFixed(6),
+        lon1: debouncedMapBounds.northWest.longitude.toFixed(6),
+        lat2: debouncedMapBounds.southEast.latitude.toFixed(6),
+        lon2: debouncedMapBounds.southEast.longitude.toFixed(6)
+      });
+      
+             // 최종 API URL과 파라미터 로그 출력
+       console.log('전달되는 파라미터 (API 문서 형식):');
+       console.log('- lat1:', debouncedMapBounds.northWest.latitude.toFixed(7));
+       console.log('- lon1:', debouncedMapBounds.northWest.longitude.toFixed(7));
+       console.log('- lat2:', debouncedMapBounds.southEast.latitude.toFixed(7));
+       console.log('- lon2:', debouncedMapBounds.southEast.longitude.toFixed(7));
+       console.log('- view_setting:', filter === 'all' ? 'all' : filter === 'following' ? 'following' : filter === 'me' ? 'self' : 'all');
+       console.log('========================');
+
+      const url = `https://dco69dhctdpt.cloudfront.net/api/memo/all?${queryParams}`;
+      console.log('최종 API URL:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+                 if (result.success && result.data) {
+           const transformedMemos = result.data.map(memo => ({
+             id: memo.memoId,
+             title: memo.title,
+             content: memo.content,
+             lat: memo.location?.latitude || memo.latitude,
+             lng: memo.location?.longitude || memo.longitude,
+             userId: memo.user?.userId,
+             userName: memo.user?.username,
+             profileImage: memo.user?.photoUrl,
+             createdAt: memo.createdAt,
+             isPublic: memo.isPublic,
+             fileUrl: memo.fileUrl
+           }));
+           
+           setLocalMemos(transformedMemos);
+           
+           // 부모 컴포넌트의 memos 상태도 업데이트 (지도 마커 업데이트용)
+           if (onMemosUpdate) {
+             onMemosUpdate(transformedMemos);
+           }
+         } else {
+           setLocalMemos([]);
+           
+           // 부모 컴포넌트의 memos 상태도 빈 배열로 업데이트
+           if (onMemosUpdate) {
+             onMemosUpdate([]);
+           }
+         }
+             } else {
+         setLocalMemos([]);
+         
+         // 부모 컴포넌트의 memos 상태도 빈 배열로 업데이트
+         if (onMemosUpdate) {
+           onMemosUpdate([]);
+         }
+       }
+     } catch (error) {
+       setLocalMemos([]);
+       
+       // 부모 컴포넌트의 memos 상태도 빈 배열로 업데이트
+       if (onMemosUpdate) {
+         onMemosUpdate([]);
+       }
+     } finally {
+      setIsLoading(false);
+    }
+  }, [debouncedMapBounds, userToken, filter]);
+
+  // 필터 변경 시에만 API 호출 (초기 로딩 및 필터 변경 시)
+  useEffect(() => {
+    if (debouncedMapBounds && debouncedMapBounds.northWest && debouncedMapBounds.southEast && userToken) {
+      fetchMemos();
+    }
+  }, [filter, fetchMemos]);
+
+  // 디바운싱된 mapBounds 변경 시에만 API 호출 (지도 조작 완료 후)
+  useEffect(() => {
+    if (debouncedMapBounds && debouncedMapBounds.northWest && debouncedMapBounds.southEast && userToken) {
+      fetchMemos();
+    }
+  }, [debouncedMapBounds, fetchMemos]);
+
+  // 표시할 메모 결정 (로컬 메모가 있으면 사용, 없으면 props로 받은 메모 사용)
+  const displayMemos = localMemos.length > 0 ? localMemos : memos;
+  const isActuallyLoading = isLoading || isLoadingMemos;
 
   return (
     <Animated.View style={[styles.slideUpPanel, { top: slideAnim, height: SLIDE_HEIGHT }]} {...panResponder.panHandlers}>
@@ -79,10 +238,10 @@ export default function SlidePanel({
       >
                  {(() => {
            // 백엔드에서 이미 필터링된 메모를 제공하므로 클라이언트 사이드 필터링 불필요
-           const displayMemos = memos;
+           // const displayMemos = memos; // 이 줄은 이제 사용되지 않음
 
            // 메모가 로딩 중인 경우
-           if (isLoadingMemos) {
+           if (isActuallyLoading) {
              return (
                <View style={styles.emptyState}>
                  <Text style={styles.emptyStateText}>리스트를 후딱 가져오는 중...</Text>

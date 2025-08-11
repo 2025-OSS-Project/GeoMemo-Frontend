@@ -40,11 +40,36 @@ export const sendMapBoundsToBackend = async (bounds, userToken = null) => {
       headers['Authorization'] = `Bearer ${userToken}`;
     }
 
+    // API 전송 시에만 좌표를 7자리로 포맷팅
+    const formatCoordinate = (coord) => coord ? parseFloat(coord.toFixed(7)) : coord;
+    
+    const formattedBounds = {
+      ...bounds,
+      // bounds 객체의 모든 좌표값을 7자리로 포맷팅
+      ...(bounds.northWest && {
+        northWest: {
+          latitude: formatCoordinate(bounds.northWest.latitude),
+          longitude: formatCoordinate(bounds.northWest.longitude)
+        }
+      }),
+      ...(bounds.southEast && {
+        southEast: {
+          latitude: formatCoordinate(bounds.southEast.latitude),
+          longitude: formatCoordinate(bounds.southEast.longitude)
+        }
+      }),
+      // 기존 형식 지원 (lat1, lon1, lat2, lon2)
+      ...(bounds.lat1 && { lat1: formatCoordinate(bounds.lat1) }),
+      ...(bounds.lon1 && { lon1: formatCoordinate(bounds.lon1) }),
+      ...(bounds.lat2 && { lat2: formatCoordinate(bounds.lat2) }),
+      ...(bounds.lon2 && { lon2: formatCoordinate(bounds.lon2) })
+    };
+
     const response = await fetch(config.mapBoundsEndpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        bounds,
+        bounds: formattedBounds,
         timestamp: new Date().toISOString(),
         deviceInfo: {
           platform: 'react-native',
@@ -58,10 +83,12 @@ export const sendMapBoundsToBackend = async (bounds, userToken = null) => {
     }
 
     const result = await response.json();
+    console.log('지도 경계 전송 성공 - bounds:', formattedBounds);
     return result;
   } catch (error) {
     console.error(' 지도 경계 전송 실패:', error.message);
     console.error(' API 엔드포인트:', config.mapBoundsEndpoint);
+    console.error(' 전송 시도한 bounds:', formattedBounds);
     throw error;
   }
 };
@@ -186,6 +213,8 @@ export const getMemos = async (page = 1, limit = 10, userToken = null) => {
 
 // 전체 메모 조회 함수 (지도 경계 기반)
 export const getAllMemos = async (userToken = null, viewSetting = 'all') => {
+  const config = getApiConfig();
+  
   try {
     const headers = {
       'Content-Type': 'application/json',
@@ -194,6 +223,7 @@ export const getAllMemos = async (userToken = null, viewSetting = 'all') => {
     // 토큰이 있을 때만 Authorization 헤더 추가
     if (userToken) {
       headers['Authorization'] = `Bearer ${userToken}`;
+      console.log('전체 메모 조회에 토큰 사용:', userToken.substring(0, 20) + '...');
     } else {
       console.warn('전체 메모 조회에 토큰이 없음');
     }
@@ -203,7 +233,10 @@ export const getAllMemos = async (userToken = null, viewSetting = 'all') => {
       view_setting: viewSetting
     });
 
-    const url = `https://dco69dhctdpt.cloudfront.net/api/memo/all?${queryParams}`;
+    // config 사용으로 일관성 유지
+    const url = `${config.memosEndpoint}all?${queryParams}`;
+
+    console.log('전체 메모 조회 요청:', { url, viewSetting, hasToken: !!userToken });
 
     const response = await fetch(url, {
       method: 'GET',
@@ -231,10 +264,11 @@ export const getAllMemos = async (userToken = null, viewSetting = 'all') => {
     }
 
     const result = await response.json();
+    console.log('✅ 전체 메모 조회 성공:', { count: result.data?.length || 0, viewSetting });
     return result;
   } catch (error) {
     console.error('전체 메모 조회 실패:', error.message);
-    console.error('API 엔드포인트:', 'https://dco69dhctdpt.cloudfront.net/api/memo/all');
+    console.error('API 엔드포인트:', `${config.memosEndpoint}all`);
     throw error;
   }
 };
