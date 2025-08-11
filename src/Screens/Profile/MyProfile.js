@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Image, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons, FontAwesome, MaterialIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUserInfoById, getCurrentUserInfo } from '../../config/api';
 
@@ -20,6 +20,13 @@ export default function MyProfile() {
   useEffect(() => {
     loadUserInfo();
   }, []);
+
+  // 화면에 포커스가 돌아올 때마다 사용자 정보 새로고침
+  useFocusEffect(
+    React.useCallback(() => {
+      loadUserInfo();
+    }, [])
+  );
 
   // 사용자 정보 로드
   const loadUserInfo = async () => {
