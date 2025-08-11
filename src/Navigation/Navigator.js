@@ -43,7 +43,7 @@ export default function Navigator() {
     >
       <Stack.Screen name="Login" component={Login} options={{ headerShown: false }} />
       <Stack.Screen name="SignUp" component={SignUp} />
-      <Stack.Screen name="EmailVerification" component={EmailVerification} />
+      <Stack.Screen name="EmailVerification" component={EmailVerification} options={{ headerShown: false }}/>
       <Stack.Screen name="UserInfoInput" component={UserInfoInput} />
       <Stack.Screen
         name="MemoMap"
