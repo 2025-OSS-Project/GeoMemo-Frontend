@@ -11,7 +11,7 @@ export default function Following() {
     <View style={styles.followRow}>
       <TouchableOpacity
         style={styles.profileCircle}
-        onPress={() => navigation.navigate('OtherProfile')}
+        onPress={() => navigation.navigate('OtherProfile', { userId: item.id })}
       >
         <Text style={styles.profileInitial}>0</Text>
       </TouchableOpacity>

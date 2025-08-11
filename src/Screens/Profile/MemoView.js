@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Image, ActivityIndicator, Alert, Linking } from 'react-native';
 import { Ionicons, FontAwesome, AntDesign } from '@expo/vector-icons';
-import { getMemoById, scrapMemo, unscrapMemo } from '../../config/api';
+import { getMemoById, scrapMemo, unscrapMemo, getCurrentUserInfo } from '../../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function MemoView({ navigation, route }) {
@@ -10,23 +10,58 @@ export default function MemoView({ navigation, route }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isScrapLoading, setIsScrapLoading] = useState(false);
+  const [myUserId, setMyUserId] = useState(null);
   
-  // route.params에서 메모 ID 가져오기
-  const memoId = route?.params?.memoId || route?.params?.memo?.id;
+  // route.params에서 메모 데이터 가져오기
+  const memoFromParams = route?.params?.memo;
+  const memoId = route?.params?.memoId || memoFromParams?.memoId || memoFromParams?.id;
   
+  // 현재 사용자 ID 가져오기
+  useEffect(() => {
+    const getMyUserId = async () => {
+      try {
+        const userToken = await AsyncStorage.getItem('userToken');
+        if (userToken) {
+          // /api/auth/me API를 통해 현재 사용자 정보 가져오기
+          const currentUserInfo = await getCurrentUserInfo(userToken);
+          setMyUserId(currentUserInfo.user_id.toString());
+        }
+      } catch (error) {
+        console.error('사용자 ID 가져오기 실패:', error);
+      }
+    };
+    
+    getMyUserId();
+  }, []);
+
   // 메모 데이터 가져오기
   useEffect(() => {
     const fetchMemoData = async () => {
-      if (!memoId) {
-        setError('메모 ID가 없습니다.');
-        setIsLoading(false);
-        return;
-      }
-
       try {
         setIsLoading(true);
         setError(null);
         
+        // route.params에서 전달받은 메모 데이터가 있으면 먼저 사용
+        if (memoFromParams) {
+          console.log('전달받은 메모 데이터 사용:', memoFromParams);
+          setMemo(memoFromParams);
+          
+          // 스크랩 상태 설정 (백엔드에서 제공하는 경우)
+          if (memoFromParams.isScrapped !== undefined) {
+            setIsScrapped(memoFromParams.isScrapped);
+          }
+          
+          setIsLoading(false);
+          return;
+        }
+        
+        // 전달받은 메모 데이터가 없고 memoId가 있는 경우 API 호출
+        if (!memoId) {
+          setError('메모 ID가 없습니다.');
+          setIsLoading(false);
+          return;
+        }
+
         // 저장된 토큰 가져오기
         const userToken = await AsyncStorage.getItem('userToken');
         
@@ -55,7 +90,7 @@ export default function MemoView({ navigation, route }) {
     };
 
     fetchMemoData();
-  }, [memoId]);
+  }, [memoId, memoFromParams]);
 
   const handleScrap = async () => {
     if (isScrapLoading) return; // 이미 처리 중이면 무시
@@ -247,15 +282,41 @@ export default function MemoView({ navigation, route }) {
         {/* 제목 줄 */}
         <View style={styles.inputRow}>
           {/* 프로필 사진 */}
-          <View style={styles.profileCircle}>
-            {memo.user?.photoUrl ? (
-              <Image source={{ uri: memo.user.photoUrl }} style={styles.profileImage} />
-            ) : null}
-          </View>
+          <TouchableOpacity 
+            onPress={() => {
+              // 현재 사용자와 다른 사용자인지 확인
+              if (memo.userId && memo.userId !== myUserId) {
+                // 다른 사용자의 메모인 경우
+                navigation.navigate('OtherProfile', { userId: memo.userId });
+              } else if (memo.userId === myUserId) {
+                // 내 메모인 경우
+                navigation.navigate('MyProfile');
+              } else if (memo.user?.userId && memo.user.userId !== myUserId) {
+                // user 객체에 userId가 있는 경우
+                navigation.navigate('OtherProfile', { userId: memo.user.userId });
+              } else if (memo.user?.userId === myUserId) {
+                // 내 메모인 경우
+                navigation.navigate('MyProfile');
+              } else {
+                // userId 정보가 없는 경우
+                console.warn('사용자 ID 정보가 없습니다.');
+              }
+            }}
+          >
+            <View style={styles.profileCircle}>
+              {memo.profileImage ? (
+                <Image source={{ uri: memo.profileImage }} style={styles.profileImage} />
+              ) : memo.user?.photoUrl ? (
+                <Image source={{ uri: memo.user.photoUrl }} style={styles.profileImage} />
+              ) : null}
+            </View>
+          </TouchableOpacity>
           
           {/* 유저 닉네임만 */}
           <View style={styles.nicknameContainer}>
-            <Text style={styles.userNickname}>{memo.user?.username || '사용자'}</Text>
+            <Text style={styles.userNickname}>
+              {memo.user?.username || memo.userNickname || '사용자'}
+            </Text>
           </View>
         </View>
         
@@ -485,14 +546,14 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   contentTitle: {
-    fontSize: 18,
-    fontWeight: 'normal',
+    fontSize: 16,
+    fontWeight: '600',
     marginBottom: 15,
-    color: '#333',
-    backgroundColor: '#fff',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    color: '#555',
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
     alignSelf: 'flex-start',
   },
 });

@@ -58,13 +58,6 @@ function Home() {
     }
   };
 
-  // 토큰이 설정되면 메모 조회
-  useEffect(() => {
-    if (userToken && mapBounds) {
-      fetchAllMemos(mapBounds);
-    }
-  }, [userToken, mapBounds, fetchAllMemos]);
-
   // 사용자 토큰 가져오기
   useEffect(() => {
     fetchUserToken();
@@ -112,10 +105,14 @@ function Home() {
 
   const fetchAllMemos = useCallback(async (bounds) => {
     try {
+      if (!userToken) {
+        return;
+      }
+      
       // 로딩 상태 시작
       setIsLoadingMemos(true);
       
-      // 토큰이 없으면 기본 'all' 설정으로 메모 조회 시도
+      // 현재 필터에 맞는 view_setting 값 매핑
       let viewSetting;
       switch (filter) {
         case 'all':
@@ -131,7 +128,6 @@ function Home() {
           viewSetting = 'all';
       }
       
-      // 토큰이 있으면 토큰과 함께, 없으면 토큰 없이 API 호출
       const response = await getAllMemos(userToken, viewSetting);
       
       if (response.success && response.data) {
@@ -155,7 +151,6 @@ function Home() {
         setMemos([]);
       }
     } catch (error) {
-      console.error('메모 조회 실패:', error);
       setMemos([]);
     } finally {
       // 로딩 상태 해제
@@ -337,10 +332,8 @@ function Home() {
             };
           setMapBounds(initialBounds);
           
-          // 토큰이 설정된 후에 메모 조회
-          if (userToken) {
-            fetchAllMemos(initialBounds);
-          }
+          // 현재 필터에 맞는 메모 조회
+          fetchAllMemos(initialBounds);
         }
       }, 500); // 1초 → 500ms로 단축
     });

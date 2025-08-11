@@ -49,7 +49,7 @@ export default function SlidePanel({
     debounceTimeoutRef.current = setTimeout(() => {
       console.log('디바운싱 완료 - debouncedMapBounds 업데이트');
       setDebouncedMapBounds(mapBounds);
-    }, 500);
+    }, 500); 
 
     return () => {
       if (debounceTimeoutRef.current) {
@@ -274,15 +274,33 @@ export default function SlidePanel({
               {displayMemos.map(memo => (
                 <View key={memo.id} style={styles.memoCard}>
                   {/* 프로필 이미지 */}
-                  {memo.profileImage ? (
-                    <Image 
-                      source={{ uri: memo.profileImage }} 
-                      style={styles.memoProfileCircle}
-                    />
-                  ) : (
-                    <View style={[styles.memoProfileCircle, styles.defaultProfile]}>
-                    </View>
-                  )}
+                                     <TouchableOpacity 
+                     onPress={() => {
+                       // 현재 사용자와 메모 작성자 비교
+                       if (currentUserInfo && memo.userId) {
+                         if (memo.userId === currentUserInfo.user_id) {
+                           // 내 메모인 경우
+                           navigation.navigate('MyProfile');
+                         } else {
+                           // 다른 사용자의 메모인 경우
+                           navigation.navigate('OtherProfile', { userId: memo.userId });
+                         }
+                       } else {
+                         // currentUserInfo가 없거나 memo.userId가 없는 경우
+                         console.warn('사용자 정보 또는 메모 작성자 정보가 없습니다.');
+                       }
+                     }}
+                   >
+                    {memo.profileImage ? (
+                      <Image 
+                        source={{ uri: memo.profileImage }} 
+                        style={styles.memoProfileCircle}
+                      />
+                    ) : (
+                      <View style={[styles.memoProfileCircle, styles.defaultProfile]}>
+                      </View>
+                    )}
+                  </TouchableOpacity>
 
                   {/* 메모 정보 */}
                   <View style={styles.memoBox}>

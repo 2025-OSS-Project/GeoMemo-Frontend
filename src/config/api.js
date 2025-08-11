@@ -1038,6 +1038,54 @@ export const getUserInfo = async (userToken = null) => {
   }
 };
 
+// 사용자 정보 조회 함수 (API 명세서에 맞춤)
+export const getUserInfoById = async (userId, userToken = null) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+    }
+
+    const response = await fetch(`${config.baseURL}/user/${userId}`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('사용자 정보 조회 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 사용자 정보 조회 성공:', userId);
+    return result;
+  } catch (error) {
+    console.error('❌ 사용자 정보 조회 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/${userId}`);
+    throw error;
+  }
+};
+
 // 토큰 유효성 검증 함수
 export const validateToken = async (token) => {
   if (!token) {
@@ -1338,3 +1386,80 @@ export const unscrapMemo = async (memoId, userToken) => {
     throw error;
   }
 }; 
+
+export const getCurrentUserInfo = async (userToken) => {
+  const config = getApiConfig();
+  try {
+    const response = await fetch(`${config.baseURL}/auth/me`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userToken}`,
+      },
+    });
+    
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        console.error('현재 사용자 정보 조회 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+    
+    const result = await response.json();
+    console.log('✅ 현재 사용자 정보 조회 성공:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ 현재 사용자 정보 조회 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/auth/me`);
+    throw error;
+  }
+};
+
+// 스크랩한 메모 목록 가져오기
+export const getScrapMemos = async (userToken) => {
+  const config = getApiConfig();
+  try {
+    const response = await fetch(`${config.baseURL}/memo/scrap`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userToken}`,
+      },
+    });
+    
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        console.error('스크랩 메모 조회 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+    
+    const result = await response.json();
+    console.log('✅ 스크랩 메모 조회 성공:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ 스크랩 메모 조회 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/memo/scrap`);
+    throw error;
+  }
+};
