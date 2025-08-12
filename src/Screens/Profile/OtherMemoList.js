@@ -305,22 +305,7 @@ export default function OtherMemoList({ userId }) {
                                 {memo.content}
                             </Text>
                             
-                            {/* 파일 이미지 미리보기 */}
-                            {memo.fileUrl && memo.fileUrl.length > 0 && (
-                                <View style={styles.filePreviewContainer}>
-                                    {memo.fileUrl.slice(0, 3).map((url, index) => (
-                                        <Image
-                                            key={index}
-                                            source={{ uri: url }}
-                                            style={styles.filePreview}
-                                            defaultSource={require('../../../assets/icon.png')}
-                                        />
-                                    ))}
-                                    {memo.fileUrl.length > 3 && (
-                                        <Text style={styles.moreFilesText}>+{memo.fileUrl.length - 3}</Text>
-                                    )}
-                                </View>
-                            )}
+
                             
                             <View style={styles.bottomInfo}>
                                 <Text style={styles.publicStatus}>
@@ -399,27 +384,7 @@ const styles = StyleSheet.create({
         color: '#555',
         marginBottom: 4,
     },
-    filePreviewContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 4,
-    },
-    fileCountText: {
-        fontSize: 10,
-        color: '#666',
-        marginRight: 6,
-    },
-    filePreview: {
-        width: 28,
-        height: 28,
-        borderRadius: 4,
-        marginRight: 3,
-    },
-    moreFilesText: {
-        fontSize: 9,
-        color: '#999',
-        fontWeight: '500',
-    },
+
     bottomInfo: {
         flexDirection: 'row',
         justifyContent: 'space-between',
