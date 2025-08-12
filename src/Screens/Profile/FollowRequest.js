@@ -58,11 +58,10 @@ export default function FollowRequest() {
         prevData.filter(user => user.userId !== userId)
       );
       
-      // 성공 메시지 표시
-      Alert.alert('성공', '팔로우 요청을 승인했습니다.');
+      // 성공 메시지 제거 - alert 창 없이 처리
     } catch (error) {
       console.error('팔로우 요청 승인 실패:', error);
-      Alert.alert('오류', '팔로우 요청 승인에 실패했습니다.');
+      // 오류 alert 제거
     }
   };
 
@@ -81,10 +80,10 @@ export default function FollowRequest() {
         prevData.filter(user => user.userId !== userId)
       );
       
-      // 성공 메시지 표시
-      Alert.alert('성공', '팔로우 요청을 거절했습니다.');
+      // 성공 메시지 제거 - alert 창 없이 처리
     } catch (error) {
-      Alert.alert('오류', '팔로우 요청 거절에 실패했습니다.');
+      console.error('팔로우 요청 거절 실패:', error);
+      // 오류 alert 제거
     }
   };
 
