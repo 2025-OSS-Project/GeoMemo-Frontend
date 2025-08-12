@@ -134,7 +134,6 @@ export default function SlidePanel({
            const transformedMemos = result.data.map(memo => ({
              id: memo.memoId,
              title: memo.title,
-             content: memo.content,
              lat: memo.location?.latitude || memo.latitude,
              lng: memo.location?.longitude || memo.longitude,
              // location 객체를 그대로 유지 (API 응답 구조 그대로)
@@ -339,7 +338,7 @@ export default function SlidePanel({
                       }}
                       style={styles.memoTouchable}
                     >
-                      <Text style={styles.memoTitle}>{memo.title || memo.content}</Text>
+                      <Text style={styles.memoTitle}>{memo.title}</Text>
                     </TouchableOpacity>
                     {memo.userName && <Text style={styles.memoUserName}>by {memo.userName}</Text>}
                   </View>
