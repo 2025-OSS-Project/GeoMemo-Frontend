@@ -1,140 +1,373 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getMemos } from '../../config/api';
 
 export default function OtherMemoList({ userId }) {
     const [memos, setMemos] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
     const navigation = useNavigation();
 
     // 컴포넌트 마운트 시 해당 사용자의 메모 조회
     useEffect(() => {
+        console.log('=== OtherMemoList 컴포넌트 마운트 ===');
+        console.log('전달받은 userId:', userId);
+        console.log('userId 타입:', typeof userId);
+        console.log('userId 값 검증:', userId ? '유효함' : '유효하지 않음');
+        
         if (userId) {
             loadUserMemos();
+        } else {
+            console.error('❌ userId가 없어서 메모를 로드할 수 없음');
+            setError('사용자 ID가 필요합니다.');
         }
     }, [userId]);
 
-    // 사용자 메모 로드
+    // 사용자 메모 로드 - 직접 API 호출
     const loadUserMemos = async () => {
+        console.log('=== loadUserMemos 함수 시작 ===');
+        console.log('함수 내부에서 사용할 userId:', userId);
+        console.log('userId 타입:', typeof userId);
+        console.log('userId 값 검증:', userId ? '유효함' : '유효하지 않음');
+        console.log('userId === null:', userId === null);
+        console.log('userId === undefined:', userId === undefined);
+        console.log('userId === 0:', userId === 0);
+        console.log('userId === "0":', userId === "0");
+        
         try {
             setIsLoading(true);
+            setError(null);
+            
             const userToken = await AsyncStorage.getItem('userToken');
             if (!userToken) {
-                Alert.alert('오류', '로그인이 필요합니다.');
-                return;
+                throw new Error('로그인이 필요합니다.');
             }
 
-            // API를 통해 해당 사용자의 메모 조회
-            const memoData = await getMemos(1, 20, userToken);
-            if (memoData && memoData.data) {
-                // 해당 사용자의 메모만 필터링 (실제로는 백엔드에서 필터링해야 함)
-                const userMemos = memoData.data.filter(memo => memo.user_id === parseInt(userId));
-                setMemos(userMemos);
+            // 직접 API 호출: /api/memo/{user_id}
+            const apiUrl = `https://dco69dhctdpt.cloudfront.net/api/memo/${userId}`;
+            console.log('=== API 호출 시작 ===');
+            console.log('API URL:', apiUrl);
+            console.log('전달할 userToken:', userToken ? userToken.substring(0, 20) + '...' : '없음');
+            console.log('최종 API URL 구성:', {
+                baseUrl: 'https://dco69dhctdpt.cloudfront.net/api/memo/',
+                userId: userId,
+                fullUrl: apiUrl
+            });
+            
+            // API 경로와 파라미터 상세 로깅
+            console.log('=== API 경로 및 파라미터 상세 분석 ===');
+            console.log('1. 기본 URL:', 'https://dco69dhctdpt.cloudfront.net');
+            console.log('2. API 엔드포인트:', '/api/memo/');
+            console.log('3. 경로 파라미터 user_id:', userId);
+            console.log('4. 최종 완성된 URL:', apiUrl);
+            console.log('5. URL 구성 방식:', `baseUrl + userId = ${'https://dco69dhctdpt.cloudfront.net/api/memo/'} + ${userId}`);
+            console.log('6. HTTP 메서드:', 'GET');
+            console.log('7. 요청 헤더:', {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${userToken ? userToken.substring(0, 20) + '...' : '없음'}`
+            });
+            
+            const response = await fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${userToken}`
+                }
+            });
+            
+            console.log('=== API 응답 분석 ===');
+            console.log('HTTP 상태 코드:', response.status);
+            console.log('응답 헤더:', Object.fromEntries(response.headers.entries()));
+            
+            if (!response.ok) {
+                let errorMessage = `HTTP error! status: ${response.status}`;
+                
+                try {
+                    const errorData = await response.json();
+                    console.error('서버 에러 응답:', errorData);
+                    
+                    // 422 Validation Error 처리 (이미지에 표시된 형태)
+                    if (response.status === 422 && errorData.detail) {
+                        if (Array.isArray(errorData.detail)) {
+                            errorMessage = errorData.detail.map(err => err.msg || err.message || 'Validation error').join(', ');
+                        } else {
+                            errorMessage = errorData.detail;
+                        }
+                    } else {
+                        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+                    }
+                } catch (parseError) {
+                    // JSON 파싱 실패 시 텍스트로 읽기
+                    try {
+                        const errorText = await response.text();
+                        console.error('서버 텍스트 응답:', errorText);
+                        errorMessage = `Server response: ${errorText}`;
+                    } catch (textError) {
+                        errorMessage = `HTTP error! status: ${response.status}`;
+                    }
+                }
+                
+                // "메모를 찾을 수 없습니다" 에러를 적절히 처리
+                if (errorMessage.includes('메모를 찾을 수 없습니다')) {
+                    console.log('📝 해당 사용자의 메모가 없음');
+                    setMemos([]);
+                    setIsLoading(false);
+                    return;
+                }
+                
+                throw new Error(errorMessage);
+            }
+
+            const result = await response.json();
+            console.log('=== API 응답 상세 분석 ===');
+            console.log('API 응답 전체:', result);
+            console.log('응답 타입:', typeof result);
+            console.log('응답이 배열인가?', Array.isArray(result));
+            console.log('응답 길이:', result?.length);
+            
+            // 이미지에 표시된 API 응답 형태와 비교 분석
+            if (Array.isArray(result)) {
+                console.log('✅ 응답이 배열 형태 (이미지의 200 성공 응답과 일치)');
+                console.log('배열의 첫 번째 요소 분석:');
+                if (result.length > 0) {
+                    const firstMemo = result[0];
+                    console.log('첫 번째 메모 객체:', firstMemo);
+                    console.log('memoId 필드:', firstMemo.memoId, '타입:', typeof firstMemo.memoId);
+                    console.log('title 필드:', firstMemo.title, '타입:', typeof firstMemo.title);
+                    console.log('content 필드:', firstMemo.content, '타입:', typeof firstMemo.content);
+                    console.log('createdAt 필드:', firstMemo.createdAt, '타입:', typeof firstMemo.createdAt);
+                    console.log('updatedAt 필드:', firstMemo.updatedAt, '타입:', typeof firstMemo.updatedAt);
+                    console.log('isPublic 필드:', firstMemo.isPublic, '타입:', typeof firstMemo.isPublic);
+                    console.log('fileUrl 필드:', firstMemo.fileUrl, '타입:', typeof firstMemo.fileUrl, '배열인가?', Array.isArray(firstMemo.fileUrl));
+                    
+                    if (firstMemo.location) {
+                        console.log('location 객체 분석:');
+                        console.log('  - name:', firstMemo.location.name);
+                        console.log('  - latitude:', firstMemo.location.latitude);
+                        console.log('  - longitude:', firstMemo.location.longitude);
+                        console.log('  - address:', firstMemo.location.address);
+                        console.log('  - category:', firstMemo.location.category);
+                    }
+                    
+                    if (firstMemo.user) {
+                        console.log('user 객체 분석:');
+                        console.log('  - userId:', firstMemo.user.userId);
+                        console.log('  - username:', firstMemo.user.username);
+                        console.log('  - photoUrl:', firstMemo.user.photoUrl);
+                    }
+                } else {
+                    console.log('📝 배열이 비어있음 (메모가 없음)');
+                }
+            } else {
+                console.log('❌ 응답이 배열이 아님 (예상과 다름)');
+                console.log('응답 구조 분석:', {
+                    keys: Object.keys(result || {}),
+                    hasDetail: result?.detail ? '있음' : '없음',
+                    detailType: result?.detail ? typeof result.detail : 'N/A',
+                    detailIsArray: result?.detail ? Array.isArray(result.detail) : 'N/A'
+                });
+                
+                // 422 Validation Error 형태인지 확인
+                if (result?.detail) {
+                    console.log('⚠️ 422 Validation Error 형태로 보임');
+                    console.log('detail 내용:', result.detail);
+                }
+            }
+            
+            let memoData = [];
+            
+            // 이미지에 표시된 API 응답 형태에 맞게 처리
+            // 성공 응답 (HTTP 200): 배열 형태로 직접 반환
+            if (Array.isArray(result)) {
+                memoData = result;
+                console.log('✅ API에서 메모 데이터 추출 성공:', memoData.length);
+            } else {
+                console.error('❌ 예상치 못한 응답 구조:', result);
+                setError('메모 목록을 가져올 수 없습니다. 응답 구조가 올바르지 않습니다.');
+                return;
+            }
+            
+            // 메모 데이터가 있는 경우에만 필터링
+            if (memoData.length > 0) {
+                // 필터링 없이 모든 메모를 그대로 표시
+                setMemos(memoData);
+                console.log('=== 메모 데이터 설정 완료 ===');
+                console.log('전체 메모 수:', memoData.length);
+                console.log('메모 목록:', memoData.map(m => ({ id: m.memoId, title: m.title, isPublic: m.isPublic })));
+            } else {
+                setMemos([]);
+                console.log('📝 메모 데이터가 없음');
             }
         } catch (error) {
             console.error('사용자 메모 로드 실패:', error);
-            Alert.alert('오류', '메모를 불러올 수 없습니다.');
+            setError(`메모를 불러올 수 없습니다: ${error.message}`);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const renderItem = ({ item }) => (
-        <View style={styles.memoRow}>
-            <View style={styles.circle}>
-                <Text style={styles.circleText}>{item.memo_id || 'M'}</Text>
-            </View>
-            <TouchableOpacity
-                style={styles.memoBox}
-                onPress={() => navigation.navigate('MemoView', { memoId: item.memo_id })}>
-                <Text style={styles.memoText}>{item.content || '메모 내용'}</Text>
-            </TouchableOpacity>
-        </View>
-    );
+    // 메모 날짜 포맷팅
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (error) {
+            return dateString;
+        }
+    };
 
     if (isLoading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#6EE58F" />
+                <ActivityIndicator size="large" color="#007AFF" />
                 <Text style={styles.loadingText}>메모를 불러오는 중...</Text>
             </View>
         );
     }
 
-    if (memos.length === 0) {
+    if (error) {
         return (
-            <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>표시할 메모가 없습니다.</Text>
+            <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity style={styles.retryButton} onPress={loadUserMemos}>
+                    <Text style={styles.retryButtonText}>다시 시도</Text>
+                </TouchableOpacity>
             </View>
         );
     }
 
     return (
-        <FlatList
-            data={memos}
-            keyExtractor={(item) => item.memo_id?.toString() || Math.random().toString()}
-            renderItem={renderItem}
-            contentContainerStyle={styles.container}
-        />
+        <View style={styles.container}>
+            {/* 메모 목록만 스크롤 */}
+            <ScrollView contentContainerStyle={styles.memoList}>
+                {memos.length === 0 ? (
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>메모가 없습니다</Text>
+                    </View>
+                ) : (
+                    memos.map((memo) => (
+                        <TouchableOpacity
+                            key={memo.memoId}
+                            style={styles.memoItem}
+                            onPress={() => navigation.navigate('MemoView', { memo })}
+                        >
+                            <Text style={styles.title}>
+                                {memo.title || '제목 없음'}
+                            </Text>
+                            <View style={styles.timeLocationContainer}>
+                                <Text style={styles.timeText}>
+                                    {formatDate(memo.createdAt)}
+                                </Text>
+                                <Text style={styles.location} numberOfLines={1} ellipsizeMode="tail">
+                                    {memo.location?.address || '위치 없음'}
+                                </Text>
+                            </View>
+                            <Text style={styles.content} numberOfLines={2}>
+                                {memo.content}
+                            </Text>
+                            <Text style={styles.publicStatus}>
+                                {memo.isPublic ? '공개' : '비공개'}
+                            </Text>
+                        </TouchableOpacity>
+                    ))
+                )}
+            </ScrollView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        paddingVertical: 20,
-        paddingHorizontal: 20,
-        backgroundColor: '#fff',
-    },
-    memoRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    circle: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: '#333',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 15,
-    },
-    circleText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    memoBox: {
         flex: 1,
-        height: 50,
-        backgroundColor: '#eee',
-        borderRadius: 10,
     },
-    memoText: {
+    memoList: {
+        gap: 10,
+        paddingBottom: 20,
+    },
+    memoItem: {
+        backgroundColor: '#eee',
+        padding: 15,
+        borderRadius: 8,
+        marginHorizontal: 10,
+        marginVertical: 5,
+    },
+    title: {
+        fontSize: 16,
+        fontWeight: '500',
+        marginBottom: 4,
+    },
+    timeLocationContainer: {
+        marginBottom: 4,
+    },
+    timeText: {
+        fontSize: 11,
+        color: '#999',
+        fontWeight: 'bold',
+        marginBottom: 2,
+    },
+    location: {
+        fontSize: 12,
+        color: '#888',
+    },
+    content: {
         fontSize: 14,
         color: '#333',
+        marginBottom: 4,
+    },
+    publicStatus: {
+        fontSize: 10,
+        color: '#007AFF',
+        fontWeight: 'bold',
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#fff',
     },
     loadingText: {
         marginTop: 10,
         fontSize: 16,
         color: '#666',
     },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    errorText: {
+        fontSize: 16,
+        color: '#666',
+        textAlign: 'center',
+        marginBottom: 20,
+    },
+    retryButton: {
+        backgroundColor: '#007AFF',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 8,
+    },
+    retryButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
     emptyContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#fff',
+        padding: 40,
     },
     emptyText: {
-        fontSize: 16,
+        fontSize: 18,
         color: '#666',
     },
 });
