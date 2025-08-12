@@ -257,7 +257,18 @@ export default function OtherMemoList({ userId }) {
                         <TouchableOpacity
                             key={memo.memoId}
                             style={styles.memoItem}
-                            onPress={() => navigation.navigate('MemoView', { memo })}
+                            onPress={() => {
+                                console.log('메모 클릭됨:', { 
+                                    memoId: memo.memoId, 
+                                    title: memo.title,
+                                    hasMemoData: !!memo 
+                                });
+                                // memoId를 명시적으로 전달
+                                navigation.navigate('MemoView', { 
+                                    memo: memo,
+                                    memoId: memo.memoId 
+                                });
+                            }}
                         >
                             <Text style={styles.title}>
                                 {memo.title || '제목 없음'}

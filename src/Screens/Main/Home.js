@@ -136,8 +136,10 @@ function Home() {
           id: memo.memoId,
           title: memo.title,
           content: memo.content,
-          lat: memo.location?.latitude || memo.latitude,
-          lng: memo.location?.longitude || memo.longitude,
+          lat: memo.location?.latitude,
+          lng: memo.location?.longitude,
+          // location 객체를 그대로 유지 (API 응답 구조 그대로)
+          location: memo.location,
           userId: memo.user?.userId,
           userName: memo.user?.username,
           profileImage: memo.user?.photoUrl,
@@ -521,18 +523,31 @@ function Home() {
 
 
   const handleMemoPress = useCallback((memo) => {
-    if (!memo?.id) {
+    console.log('=== handleMemoPress 함수 시작 ===');
+    console.log('전달받은 메모:', memo);
+    console.log('메모 ID 필드들:', {
+      id: memo?.id,
+      memoId: memo?.memoId,
+      hasId: !!memo?.id,
+      hasMemoId: !!memo?.memoId
+    });
+    
+    if (!memo?.id && !memo?.memoId) {
+      console.error('❌ 메모 ID가 없음');
       return;
     }
     
     try {
       // MemoView로 네비게이션하면서 메모 ID 전달
+      const memoIdToPass = memo.memoId || memo.id;
+      console.log('MemoView로 전달할 memoId:', memoIdToPass);
+      
       navigation.navigate('MemoView', { 
-        memoId: memo.id,
+        memoId: memoIdToPass,
         memo: memo // 기존 메모 데이터도 함께 전달 (필요시 사용)
       });
     } catch (error) {
-      // 네비게이션 실패 시 무시
+      console.error('네비게이션 실패:', error);
     }
   }, [navigation]);
 
@@ -569,8 +584,10 @@ function Home() {
             id: memo.memoId,
             title: memo.title,
             content: memo.content,
-            lat: memo.location?.latitude || memo.latitude,
-            lng: memo.location?.longitude || memo.longitude,
+            lat: memo.location?.latitude,
+            lng: memo.location?.longitude,
+            // location 객체를 그대로 유지 (API 응답 구조 그대로)
+            location: memo.location,
             userId: memo.user?.userId,
             userName: memo.user?.username,
             profileImage: memo.user?.photoUrl,

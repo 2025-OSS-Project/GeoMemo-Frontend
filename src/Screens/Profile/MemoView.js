@@ -16,6 +16,12 @@ export default function MemoView({ navigation, route }) {
   const memoFromParams = route?.params?.memo;
   const memoId = route?.params?.memoId || memoFromParams?.memoId || memoFromParams?.id;
   
+  console.log('=== MemoView memoId 추출 ===');
+  console.log('route.params.memoId:', route?.params?.memoId);
+  console.log('memoFromParams?.memoId:', memoFromParams?.memoId);
+  console.log('memoFromParams?.id:', memoFromParams?.id);
+  console.log('최종 memoId:', memoId);
+  
   // 현재 사용자 ID 가져오기
   useEffect(() => {
     const getMyUserId = async () => {
@@ -38,16 +44,39 @@ export default function MemoView({ navigation, route }) {
   useEffect(() => {
     const fetchMemoData = async () => {
       try {
+        console.log('=== fetchMemoData 함수 시작 ===');
+        console.log('memoId:', memoId);
+        console.log('memoFromParams:', memoFromParams);
+        
         setIsLoading(true);
         setError(null);
         
         // route.params에서 전달받은 메모 데이터가 있으면 먼저 사용
         if (memoFromParams) {
-          console.log('전달받은 메모 데이터 사용:', memoFromParams);
+          console.log('✅ 전달받은 메모 데이터 사용:', memoFromParams);
+          console.log('메모 데이터 키들:', Object.keys(memoFromParams));
+          console.log('메모 데이터 상세:', {
+            id: memoFromParams.id,
+            memoId: memoFromParams.memoId,
+            title: memoFromParams.title,
+            content: memoFromParams.content,
+            userId: memoFromParams.userId,
+            userName: memoFromParams.userName,
+            profileImage: memoFromParams.profileImage,
+            createdAt: memoFromParams.createdAt,
+            isPublic: memoFromParams.isPublic,
+            // 위치 정보 추가
+            lat: memoFromParams.lat,
+            lng: memoFromParams.lng,
+            address: memoFromParams.address,
+            location: memoFromParams.location
+          });
+          
           setMemo(memoFromParams);
           
           // 스크랩 상태 설정 (백엔드에서 제공하는 경우)
           if (memoFromParams.isScrapped !== undefined) {
+            console.log('전달받은 메모의 스크랩 상태:', memoFromParams.isScrapped);
             setIsScrapped(memoFromParams.isScrapped);
           }
           
@@ -57,6 +86,7 @@ export default function MemoView({ navigation, route }) {
         
         // 전달받은 메모 데이터가 없고 memoId가 있는 경우 API 호출
         if (!memoId) {
+          console.error('❌ memoId가 없음');
           setError('메모 ID가 없습니다.');
           setIsLoading(false);
           return;
@@ -64,22 +94,49 @@ export default function MemoView({ navigation, route }) {
 
         // 저장된 토큰 가져오기
         const userToken = await AsyncStorage.getItem('userToken');
+        console.log('사용자 토큰 상태:', userToken ? '있음' : '없음');
         
         console.log('메모 상세 조회 시작:', { memoId, hasToken: !!userToken });
         
         // API 호출하여 메모 데이터 가져오기
         const response = await getMemoById(memoId, userToken);
         
-        if (response.success && response.data) {
-          console.log('메모 데이터 조회 성공:', response.data);
-          setMemo(response.data);
+        console.log('메모 상세 조회 API 응답:', response);
+        
+        // API 응답 구조에 따라 메모 데이터 추출
+        let memoData = null;
+        
+        if (response && response.success && response.data) {
+          // { success: true, data: {...} } 형태
+          console.log('응답이 { success: true, data: {...} } 형태');
+          memoData = response.data;
+        } else if (response && response.data) {
+          // { data: {...} } 형태
+          console.log('응답이 { data: {...} } 형태');
+          memoData = response.data;
+        } else if (response && (response.memoId || response.title || response.content)) {
+          // 직접 메모 객체 형태
+          console.log('응답이 직접 메모 객체 형태');
+          memoData = response;
+        } else {
+          console.error('예상치 못한 API 응답 구조:', response);
+          setError('메모 데이터 구조가 올바르지 않습니다.');
+          setIsLoading(false);
+          return;
+        }
+        
+        if (memoData) {
+          console.log('✅ 메모 데이터 추출 성공:', memoData);
+          console.log('메모 데이터 키들:', Object.keys(memoData));
+          setMemo(memoData);
           // 메모의 스크랩 상태 설정 (백엔드에서 제공하는 경우)
-          if (response.data.isScrapped !== undefined) {
-            setIsScrapped(response.data.isScrapped);
+          if (memoData.isScrapped !== undefined) {
+            console.log('메모 데이터의 스크랩 상태:', memoData.isScrapped);
+            setIsScrapped(memoData.isScrapped);
           }
         } else {
-          console.error('메모 데이터 조회 실패:', response);
-          setError('메모를 불러올 수 없습니다.');
+          console.error('메모 데이터를 추출할 수 없음');
+          setError('메모 데이터를 불러올 수 없습니다.');
         }
       } catch (error) {
         console.error('메모 조회 중 오류 발생:', error);
@@ -134,13 +191,18 @@ export default function MemoView({ navigation, route }) {
 
   // 길찾기 함수 추가
   const handleNavigation = () => {
-    if (!memo.location || !memo.location.latitude || !memo.location.longitude) {
+    // SlidePanel 데이터의 lat, lng 또는 기존 location 객체 사용
+    const latitude = memo.location?.latitude || memo.lat;
+    const longitude = memo.location?.longitude || memo.lng;
+    
+    if (!latitude || !longitude) {
       Alert.alert('위치 정보 없음', '이 메모에는 위치 정보가 없습니다.');
       return;
     }
 
-    const { latitude, longitude } = memo.location;
-    const address = memo.location.address || '목적지';
+    const address = memo.location?.address || '목적지';
+    
+    console.log('길찾기 시작:', { latitude, longitude, address });
     
     // 구글맵스 앱으로 길찾기
     const url = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&travelmode=driving`;
@@ -315,7 +377,7 @@ export default function MemoView({ navigation, route }) {
           {/* 유저 닉네임만 */}
           <View style={styles.nicknameContainer}>
             <Text style={styles.userNickname}>
-              {memo.user?.username || memo.userNickname || '사용자'}
+              {memo.user?.username || memo.userName || memo.userNickname || '사용자'}
             </Text>
           </View>
         </View>
@@ -368,13 +430,13 @@ export default function MemoView({ navigation, route }) {
 
           <View style={styles.footerSpacer} />
 
-          {memo.location && (
+          {memo.location?.address ? (
             <TouchableOpacity onPress={handleNavigation}>
               <View style={styles.footerBtn}>
                 <Ionicons name="navigate" size={24} color="black" />
               </View>
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
       </View>
     </View>

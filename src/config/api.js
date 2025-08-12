@@ -290,10 +290,16 @@ export const getMemoById = async (memoId, userToken = null) => {
       console.warn('메모 상세 조회에 토큰이 없음');
     }
 
-    const response = await fetch(`${config.memosEndpoint}${memoId}`, {
+    const url = `${config.memosEndpoint}${memoId}`;
+    console.log('메모 상세 조회 API 호출:', { url, memoId, hasToken: !!userToken });
+
+    const response = await fetch(url, {
       method: 'GET',
       headers,
     });
+
+    console.log('메모 상세 조회 HTTP 응답 상태:', response.status);
+    console.log('메모 상세 조회 HTTP 응답 헤더:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       let errorMessage = `HTTP error! status: ${response.status}`;
@@ -306,6 +312,7 @@ export const getMemoById = async (memoId, userToken = null) => {
         // JSON 파싱 실패 시 텍스트로 읽기
         try {
           const errorText = await response.text();
+          console.error('메모 상세 조회 에러 텍스트:', errorText);
           errorMessage = `Server response: ${errorText}`;
         } catch (textError) {
           errorMessage = `HTTP error! status: ${response.status}`;
@@ -316,8 +323,29 @@ export const getMemoById = async (memoId, userToken = null) => {
     }
 
     const result = await response.json();
-    console.log('✅ 메모 상세 조회 성공:', memoId);
-    return result;
+    console.log('✅ 메모 상세 조회 성공 - 원본 응답:', result);
+    console.log('응답 타입:', typeof result);
+    console.log('응답 키들:', Object.keys(result || {}));
+    
+    // API 응답 구조 분석
+    if (result && typeof result === 'object') {
+      if (result.memoId || result.title || result.content) {
+        console.log('✅ 응답이 직접 메모 객체 형태');
+        return result;
+      } else if (result.data && (result.data.memoId || result.data.title || result.data.content)) {
+        console.log('✅ 응답이 { data: {...} } 형태');
+        return result;
+      } else if (result.success && result.data && (result.data.memoId || result.data.title || result.data.content)) {
+        console.log('✅ 응답이 { success: true, data: {...} } 형태');
+        return result;
+      } else {
+        console.warn('⚠️ 예상치 못한 응답 구조, 원본 반환:', result);
+        return result;
+      }
+    } else {
+      console.warn('⚠️ 응답이 객체가 아님, 원본 반환:', result);
+      return result;
+    }
   } catch (error) {
     console.error('❌ 메모 상세 조회 실패:', error.message);
     console.error('API 엔드포인트:', `${config.memosEndpoint}${memoId}`);
