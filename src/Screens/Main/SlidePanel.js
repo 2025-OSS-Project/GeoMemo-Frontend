@@ -137,6 +137,8 @@ export default function SlidePanel({
              content: memo.content,
              lat: memo.location?.latitude || memo.latitude,
              lng: memo.location?.longitude || memo.longitude,
+             // location 객체를 그대로 유지 (API 응답 구조 그대로)
+             location: memo.location,
              userId: memo.user?.userId,
              userName: memo.user?.username,
              profileImage: memo.user?.photoUrl,
@@ -328,6 +330,10 @@ export default function SlidePanel({
                       onPress={() => {
                         console.log('=== SlidePanel 메모 클릭 ===');
                         console.log('클릭된 메모:', memo);
+                        console.log('메모의 location 객체:', memo.location);
+                        console.log('메모의 location.address:', memo.location?.address);
+                        console.log('메모의 lat:', memo.lat);
+                        console.log('메모의 lng:', memo.lng);
                         console.log('onPressMemo 함수 존재 여부:', !!onPressMemo);
                         onPressMemo(memo);
                       }}

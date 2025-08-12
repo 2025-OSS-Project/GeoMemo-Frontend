@@ -122,11 +122,60 @@ export default function Login() {
     } catch (error) {
       console.error('로그인 에러 상세:', error);
       
+      // 새로운 에러 타입 처리
+      if (error.type === 'EMAIL_VERIFICATION') {
+        // 이메일 인증이 필요한 경우
+        Alert.alert(
+          '이메일 인증 필요',
+          '이메일 인증이 완료되지 않았습니다. 인증 코드를 입력해주세요.',
+          [
+            {
+              text: '취소',
+              style: 'cancel'
+            },
+            {
+              text: '인증하기',
+              onPress: () => {
+                // 이메일 인증 화면으로 이동 (이메일 정보와 출처 전달)
+                navigation.navigate('EmailVerification', { 
+                  email: email.trim(),
+                  source: 'login'
+                });
+              }
+            }
+          ]
+        );
+        return;
+      } else if (error.type === 'INVALID_CREDENTIALS') {
+        // 잘못된 자격증명
+        Alert.alert('로그인 실패', '이메일 또는 비밀번호가 올바르지 않습니다.');
+        setPassword(''); // 비밀번호만 초기화
+        return;
+      } else if (error.type === 'REGISTRATION_REQUIRED') {
+        // 가입이 필요한 경우
+        Alert.alert(
+          '계정이 존재하지 않습니다',
+          '가입되지 않은 계정입니다. 회원가입을 진행해주세요.',
+          [
+            {
+              text: '취소',
+              style: 'cancel'
+            },
+            {
+              text: '회원가입',
+              onPress: () => {
+                navigation.navigate('SignUp');
+              }
+            }
+          ]
+        );
+        return;
+      }
+      
+      // 기존 에러 처리
       let errorMessage = '로그인에 실패했습니다.';
       if (error.message.includes('Network')) {
         errorMessage = '네트워크 연결을 확인해주세요.';
-      } else if (error.message.includes('401')) {
-        errorMessage = '이메일 또는 비밀번호가 올바르지 않습니다.';
       } else if (error.message.includes('500')) {
         errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
       } else if (error.message.includes('timeout')) {

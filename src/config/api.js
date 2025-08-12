@@ -290,10 +290,16 @@ export const getMemoById = async (memoId, userToken = null) => {
       console.warn('메모 상세 조회에 토큰이 없음');
     }
 
-    const response = await fetch(`${config.memosEndpoint}${memoId}`, {
+    const url = `${config.memosEndpoint}${memoId}`;
+    console.log('메모 상세 조회 API 호출:', { url, memoId, hasToken: !!userToken });
+
+    const response = await fetch(url, {
       method: 'GET',
       headers,
     });
+
+    console.log('메모 상세 조회 HTTP 응답 상태:', response.status);
+    console.log('메모 상세 조회 HTTP 응답 헤더:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       let errorMessage = `HTTP error! status: ${response.status}`;
@@ -306,6 +312,7 @@ export const getMemoById = async (memoId, userToken = null) => {
         // JSON 파싱 실패 시 텍스트로 읽기
         try {
           const errorText = await response.text();
+          console.error('메모 상세 조회 에러 텍스트:', errorText);
           errorMessage = `Server response: ${errorText}`;
         } catch (textError) {
           errorMessage = `HTTP error! status: ${response.status}`;
@@ -316,8 +323,29 @@ export const getMemoById = async (memoId, userToken = null) => {
     }
 
     const result = await response.json();
-    console.log('✅ 메모 상세 조회 성공:', memoId);
-    return result;
+    console.log('✅ 메모 상세 조회 성공 - 원본 응답:', result);
+    console.log('응답 타입:', typeof result);
+    console.log('응답 키들:', Object.keys(result || {}));
+    
+    // API 응답 구조 분석
+    if (result && typeof result === 'object') {
+      if (result.memoId || result.title || result.content) {
+        console.log('✅ 응답이 직접 메모 객체 형태');
+        return result;
+      } else if (result.data && (result.data.memoId || result.data.title || result.data.content)) {
+        console.log('✅ 응답이 { data: {...} } 형태');
+        return result;
+      } else if (result.success && result.data && (result.data.memoId || result.data.title || result.data.content)) {
+        console.log('✅ 응답이 { success: true, data: {...} } 형태');
+        return result;
+      } else {
+        console.warn('⚠️ 예상치 못한 응답 구조, 원본 반환:', result);
+        return result;
+      }
+    } else {
+      console.warn('⚠️ 응답이 객체가 아님, 원본 반환:', result);
+      return result;
+    }
   } catch (error) {
     console.error('❌ 메모 상세 조회 실패:', error.message);
     console.error('API 엔드포인트:', `${config.memosEndpoint}${memoId}`);
@@ -526,23 +554,63 @@ export const signIn = async (credentials) => {
     console.log('로그인 응답 헤더:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
-      let errorMessage = `HTTP error! status: ${response.status}`;
+      let errorData = null;
       
       try {
-        const errorData = await response.json();
+        errorData = await response.json();
         console.error('로그인 에러 응답:', errorData);
-        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
       } catch (parseError) {
         // JSON 파싱 실패 시 텍스트로 읽기 시도
         try {
           const errorText = await response.text();
           console.error('로그인 에러 텍스트:', errorText);
-          errorMessage = `Server response: ${errorText}`;
+          errorData = { detail: errorText };
         } catch (textError) {
-          errorMessage = `HTTP error! status: ${response.status}`;
+          errorData = { detail: `HTTP error! status: ${response.status}` };
         }
       }
+
+      // 401 응답에 대한 세부적인 에러 처리
+      if (response.status === 401) {
+        const detail = errorData?.detail || '';
+        
+        // 이메일 인증이 필요한 경우
+        if (detail.includes('이메일 인증') || detail.includes('email verification') || detail.includes('verification')) {
+          const error = new Error('EMAIL_VERIFICATION_REQUIRED');
+          error.status = 401;
+          error.detail = detail;
+          error.type = 'EMAIL_VERIFICATION';
+          throw error;
+        }
+        
+        // 잘못된 자격증명 (이메일/비밀번호 오류)
+        if (detail.includes('invalid credentials') || detail.includes('Invalid credentials') || detail.includes('잘못된')) {
+          const error = new Error('INVALID_CREDENTIALS');
+          error.status = 401;
+          error.detail = detail;
+          error.type = 'INVALID_CREDENTIALS';
+          throw error;
+        }
+        
+        // 기타 401 에러
+        const error = new Error('UNAUTHORIZED');
+        error.status = 401;
+        error.detail = detail;
+        error.type = 'UNAUTHORIZED';
+        throw error;
+      }
       
+      // 403 응답 (가입 필요)
+      if (response.status === 403) {
+        const error = new Error('REGISTRATION_REQUIRED');
+        error.status = 403;
+        error.detail = errorData?.detail || '가입이 필요합니다';
+        error.type = 'REGISTRATION_REQUIRED';
+        throw error;
+      }
+      
+      // 기타 에러
+      const errorMessage = errorData?.detail || errorData?.error || errorData?.message || `HTTP error! status: ${response.status}`;
       throw new Error(errorMessage);
     }
 
@@ -1338,6 +1406,51 @@ export const sendEmailVerification = async (email) => {
 // 이메일 인증 코드 재발송 함수
 
 
+// 스크랩 상태 확인 함수
+export const checkIsScraped = async (memoId, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/memo/check-is-scraped/${memoId}`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('스크랩 상태 확인 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 스크랩 상태 확인 성공:', memoId, result);
+    return result;
+  } catch (error) {
+    console.error('❌ 스크랩 상태 확인 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/memo/check-is-scraped/${memoId}`);
+    throw error;
+  }
+};
+
 // 스크랩 메모 함수
 export const scrapMemo = async (memoId, userToken) => {
   const config = getApiConfig();
@@ -1373,7 +1486,21 @@ export const scrapMemo = async (memoId, userToken) => {
       throw new Error(errorMessage);
     }
 
-    const result = await response.json();
+    // API 응답이 문자열일 수 있으므로 먼저 텍스트로 읽기
+    const responseText = await response.text();
+    console.log('스크랩 API 응답 텍스트:', responseText);
+    
+    let result;
+    try {
+      // JSON으로 파싱 시도
+      result = JSON.parse(responseText);
+      console.log('스크랩 API 응답 JSON:', result);
+    } catch (parseError) {
+      // JSON 파싱 실패 시 문자열 그대로 사용
+      result = responseText;
+      console.log('스크랩 API 응답 문자열:', result);
+    }
+    
     console.log('✅ 메모 스크랩 성공:', memoId);
     return result;
   } catch (error) {
@@ -1418,7 +1545,21 @@ export const unscrapMemo = async (memoId, userToken) => {
       throw new Error(errorMessage);
     }
 
-    const result = await response.json();
+    // API 응답이 문자열일 수 있으므로 먼저 텍스트로 읽기
+    const responseText = await response.text();
+    console.log('언스크랩 API 응답 텍스트:', responseText);
+    
+    let result;
+    try {
+      // JSON으로 파싱 시도
+      result = JSON.parse(responseText);
+      console.log('언스크랩 API 응답 JSON:', result);
+    } catch (parseError) {
+      // JSON 파싱 실패 시 문자열 그대로 사용
+      result = responseText;
+      console.log('언스크랩 API 응답 문자열:', result);
+    }
+    
     console.log('✅ 메모 언스크랩 성공:', memoId);
     return result;
   } catch (error) {
