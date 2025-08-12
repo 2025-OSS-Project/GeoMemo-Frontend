@@ -123,13 +123,13 @@ export default function MyProfile() {
         <View style={styles.profileInfo}>
           <Text style={styles.nickname}>{userInfo?.user_nickname || '닉네임'}</Text>
           <View style={styles.followRow}>
-            <TouchableOpacity style={styles.followBox} onPress={() => navigation.navigate('Follower')}>
+            <TouchableOpacity style={styles.followBox} onPress={() => navigation.navigate('FollowManage', { initialTab: 'followers', userNickname: userInfo?.user_nickname || '사용자' })}>
               <Text style={styles.followNumber}>{userInfo?.follower_count || 0}</Text>
-              <Text style={styles.followLabel}>팔로워</Text>
+              <Text style={styles.followLabel}>Followers</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.followBox} onPress={() => navigation.navigate('Following')}>
+            <TouchableOpacity style={styles.followBox} onPress={() => navigation.navigate('FollowManage', { initialTab: 'following', userNickname: userInfo?.user_nickname || '사용자' })}>
               <Text style={styles.followNumber}>{userInfo?.following_count || 0}</Text>
-              <Text style={styles.followLabel}>팔로잉</Text>
+              <Text style={styles.followLabel}>Following</Text>
             </TouchableOpacity>
           </View>
         </View>
