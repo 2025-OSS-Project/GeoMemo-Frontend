@@ -44,15 +44,15 @@ export default function EmailVerification() {
       // 인증 성공 시 사용자에게 알림
       Alert.alert(
         '인증 완료',
-        '이메일 인증이 완료되었습니다.',
+        '이메일 인증이 완료되었습니다. 로그인 화면으로 이동합니다.',
         [
           {
             text: '확인',
             onPress: () => {
               // 인증 완료 상태를 저장
               AsyncStorage.setItem('emailVerified', 'true');
-              // 메인 화면으로 이동
-              navigation.navigate('MemoMap');
+              // 로그인 화면으로 이동
+              navigation.navigate('Login');
             }
           }
         ]
@@ -104,6 +104,7 @@ export default function EmailVerification() {
         <TextInput
           style={[styles.input, errorMessage ? styles.inputError : null]}
           placeholder="6자리 숫자를 입력하세요"
+          placeholderTextColor="#999"
           keyboardType="numeric"
           maxLength={6}
           value={code}

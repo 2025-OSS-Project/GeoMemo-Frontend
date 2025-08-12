@@ -1294,6 +1294,47 @@ export const checkEmailVerification = async (email, code) => {
   }
 };
 
+// 이메일 인증 코드 발송 함수
+export const sendEmailVerification = async (email) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+
+    const response = await fetch(`${config.baseURL}/auth/send-mail?email=${encodeURIComponent(email)}`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        if (response.status === 422 && errorData.detail) {
+          errorMessage = errorData.detail.map(err => err.msg || err.message).join(', ');
+        } else {
+          errorMessage = errorData.detail || errorData.error || errorMessage;
+        }
+      } catch (parseError) {
+        errorMessage = `Server response error`;
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 이메일 인증 코드 발송 성공:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ 이메일 인증 코드 발송 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/auth/send-mail`);
+    throw error;
+  }
+};
+
 // 이메일 인증 코드 재발송 함수
 
 
