@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Animated, Image, StyleSheet, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getCurrentUserInfo } from '../../config/api';
 
 export default function SlidePanel({
   slideAnim,
@@ -23,8 +25,26 @@ export default function SlidePanel({
   const [localMemos, setLocalMemos] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [debouncedMapBounds, setDebouncedMapBounds] = useState(null);
+  const [currentUserInfo, setCurrentUserInfo] = useState(null);
   const debounceTimeoutRef = useRef(null);
   const prevMapBoundsRef = useRef(null);
+
+  // 현재 사용자 정보 가져오기
+  useEffect(() => {
+    const loadCurrentUserInfo = async () => {
+      try {
+        const userToken = await AsyncStorage.getItem('userToken');
+        if (userToken) {
+          const currentUser = await getCurrentUserInfo(userToken);
+          setCurrentUserInfo(currentUser);
+        }
+      } catch (error) {
+        console.error('현재 사용자 정보 로드 실패:', error);
+      }
+    };
+
+    loadCurrentUserInfo();
+  }, []);
 
   // mapBounds 변경 시 디바운싱 적용 (실시간 위치 추적 시 API 호출 방지)
   useEffect(() => {
@@ -49,7 +69,7 @@ export default function SlidePanel({
     debounceTimeoutRef.current = setTimeout(() => {
       console.log('디바운싱 완료 - debouncedMapBounds 업데이트');
       setDebouncedMapBounds(mapBounds);
-    }, 500);
+    }, 500); 
 
     return () => {
       if (debounceTimeoutRef.current) {
@@ -274,15 +294,33 @@ export default function SlidePanel({
               {displayMemos.map(memo => (
                 <View key={memo.id} style={styles.memoCard}>
                   {/* 프로필 이미지 */}
-                  {memo.profileImage ? (
-                    <Image 
-                      source={{ uri: memo.profileImage }} 
-                      style={styles.memoProfileCircle}
-                    />
-                  ) : (
-                    <View style={[styles.memoProfileCircle, styles.defaultProfile]}>
-                    </View>
-                  )}
+                                     <TouchableOpacity 
+                     onPress={() => {
+                       // 현재 사용자와 메모 작성자 비교
+                       if (currentUserInfo && memo.userId) {
+                         if (memo.userId === currentUserInfo.user_id) {
+                           // 내 메모인 경우
+                           navigation.navigate('MyProfile');
+                         } else {
+                           // 다른 사용자의 메모인 경우
+                           navigation.navigate('OtherProfile', { userId: memo.userId });
+                         }
+                       } else {
+                         // currentUserInfo가 없거나 memo.userId가 없는 경우
+                         console.warn('사용자 정보 또는 메모 작성자 정보가 없습니다.');
+                       }
+                     }}
+                   >
+                    {memo.profileImage ? (
+                      <Image 
+                        source={{ uri: memo.profileImage }} 
+                        style={styles.memoProfileCircle}
+                      />
+                    ) : (
+                      <View style={[styles.memoProfileCircle, styles.defaultProfile]}>
+                      </View>
+                    )}
+                  </TouchableOpacity>
 
                   {/* 메모 정보 */}
                   <View style={styles.memoBox}>

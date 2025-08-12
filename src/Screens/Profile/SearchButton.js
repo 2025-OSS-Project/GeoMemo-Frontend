@@ -20,7 +20,7 @@ export default function SearchButton() {
 const styles = StyleSheet.create({
   searchButton: {
     position: 'absolute',
-    bottom: 60,
+    bottom: 20,
     left: 20,
     width: 56,
     height: 56,

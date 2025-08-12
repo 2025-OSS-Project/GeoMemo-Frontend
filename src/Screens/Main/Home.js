@@ -103,7 +103,7 @@ function Home() {
     return Promise.resolve([]);
   }, []);
 
-  const fetchAllMemos = useCallback(async (bounds) => {
+  const fetchAllMemos = useCallback(async () => {
     try {
       if (!userToken) {
         return;
@@ -132,7 +132,7 @@ function Home() {
       
       if (response.success && response.data) {
         // API 응답 구조에 맞춰 메모 데이터 변환
-        const transformedMemos = response.data.map(memo => ({
+        let transformedMemos = response.data.map(memo => ({
           id: memo.memoId,
           title: memo.title,
           content: memo.content,
@@ -146,6 +146,18 @@ function Home() {
           fileUrl: memo.fileUrl
         }));
         
+        // 지도 경계가 설정된 경우 해당 영역 내의 메모만 필터링
+        if (mapBounds && mapBounds.northWest && mapBounds.southEast) {
+          transformedMemos = transformedMemos.filter(memo => {
+            if (!memo.lat || !memo.lng) return false;
+            
+            return memo.lat >= mapBounds.southEast.latitude && 
+                   memo.lat <= mapBounds.northWest.latitude &&
+                   memo.lng >= mapBounds.northWest.longitude && 
+                   memo.lng <= mapBounds.southEast.longitude;
+          });
+        }
+        
         setMemos(transformedMemos);
       } else {
         setMemos([]);
@@ -156,7 +168,7 @@ function Home() {
       // 로딩 상태 해제
       setIsLoadingMemos(false);
     }
-  }, [userToken, filter]);
+  }, [userToken, filter, mapBounds]);
 
   // 슬라이드 패널을 위한 panResponder
   const panResponder = useRef(
@@ -333,7 +345,7 @@ function Home() {
           setMapBounds(initialBounds);
           
           // 현재 필터에 맞는 메모 조회
-          fetchAllMemos(initialBounds);
+          fetchAllMemos();
         }
       }, 500); // 1초 → 500ms로 단축
     });
@@ -360,6 +372,11 @@ function Home() {
   // 화면에 포커스가 돌아왔을 때 최적화 (필요한 경우에만 실행)
   useFocusEffect(
     useCallback(() => {
+      // 홈 화면으로 돌아왔을 때 메모 데이터 새로 불러오기 (필터 변경이 아닌 경우에만)
+      if (userToken && !route.params?.filterChanged) {
+        fetchAllMemos();
+      }
+      
       // 홈 화면으로 돌아왔을 때 위치 정보 빠르게 업데이트
       const refreshLocation = route.params?.refreshLocation;
       
@@ -376,8 +393,8 @@ function Home() {
         
         // 파라미터 초기화
         navigation.setParams({ refreshLocation: false });
-      } else if (location) {
-        // 일반적인 포커스 복귀 시 위치 확인
+      } else if (location && !mapBounds) {
+        // 일반적인 포커스 복귀 시 위치 확인 (지도 경계가 설정되지 않은 경우에만)
         if (mapRef.current) {
           mapRef.current.animateToRegion({
             latitude: location.latitude,
@@ -386,7 +403,7 @@ function Home() {
             longitudeDelta: 0.01,
           }, 300);
         }
-      } else {
+      } else if (!location) {
         // 위치가 없으면 빠르게 위치 가져오기
         const quickLocationUpdate = async () => {
           try {
@@ -415,7 +432,12 @@ function Home() {
         
         quickLocationUpdate();
       }
-    }, [location, route.params?.refreshLocation, navigation])
+      
+      // 필터 변경 플래그 초기화
+      if (route.params?.filterChanged) {
+        navigation.setParams({ filterChanged: false });
+      }
+    }, [location, route.params?.refreshLocation, route.params?.filterChanged, navigation, userToken, fetchAllMemos, mapBounds])
   );
 
   const goToCurrentLocation = useCallback(() => {
@@ -543,7 +565,7 @@ function Home() {
         
         if (response.success && response.data) {
           // API 응답 구조에 맞춰 메모 데이터 변환
-          const transformedMemos = response.data.map(memo => ({
+          let transformedMemos = response.data.map(memo => ({
             id: memo.memoId,
             title: memo.title,
             content: memo.content,
@@ -556,6 +578,18 @@ function Home() {
             isPublic: memo.isPublic,
             fileUrl: memo.fileUrl
           }));
+          
+          // 지도 경계가 설정된 경우 해당 영역 내의 메모만 필터링
+          if (mapBounds && mapBounds.northWest && mapBounds.southEast) {
+            transformedMemos = transformedMemos.filter(memo => {
+              if (!memo.lat || !memo.lng) return false;
+              
+              return memo.lat >= mapBounds.southEast.latitude && 
+                     memo.lat <= mapBounds.northWest.latitude &&
+                     memo.lng >= mapBounds.northWest.longitude && 
+                     memo.lng <= mapBounds.southEast.longitude;
+            });
+          }
           
           setMemos(transformedMemos);
         } else {
@@ -580,6 +614,9 @@ function Home() {
       // 로컬 필터 상태 업데이트
       setFilter(newFilter);
       
+      // 필터 변경 플래그 설정 (useFocusEffect에서 자동 위치 이동 방지)
+      navigation.setParams({ filterChanged: true });
+      
     } catch (error) {
       // 오류 발생 시에도 로컬에서 필터 변경
       setFilter(newFilter);
@@ -588,7 +625,7 @@ function Home() {
       // 로딩 상태 해제
       setIsLoadingMemos(false);
     }
-  }, [userToken, filter]);
+  }, [userToken, filter, navigation, mapBounds]);
 
   // 초기화 중일 때 스켈레톤 UI 표시
   if (isInitializing) {

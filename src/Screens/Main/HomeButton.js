@@ -45,7 +45,7 @@ export default function HomeButton() {
 const styles = StyleSheet.create({
   homeButton: {
     position: 'absolute',
-    bottom: 60,
+    bottom: 20,
     right: 20,
     width: 56,
     height: 56,
