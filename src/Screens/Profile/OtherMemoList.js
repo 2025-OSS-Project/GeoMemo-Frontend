@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AntDesign } from '@expo/vector-icons';
 
 export default function OtherMemoList({ userId }) {
     const [memos, setMemos] = useState([]);
@@ -44,8 +45,8 @@ export default function OtherMemoList({ userId }) {
                 throw new Error('로그인이 필요합니다.');
             }
 
-            // 직접 API 호출: /api/memo/{user_id}
-            const apiUrl = `https://dco69dhctdpt.cloudfront.net/api/memo/${userId}`;
+            // 직접 API 호출: /api/memo/user/{user_id}
+            const apiUrl = `https://dco69dhctdpt.cloudfront.net/api/memo/user/${userId}`;
             console.log('=== API 호출 시작 ===');
             console.log('API URL:', apiUrl);
             console.log('전달할 userToken:', userToken ? userToken.substring(0, 20) + '...' : '없음');
@@ -58,10 +59,10 @@ export default function OtherMemoList({ userId }) {
             // API 경로와 파라미터 상세 로깅
             console.log('=== API 경로 및 파라미터 상세 분석 ===');
             console.log('1. 기본 URL:', 'https://dco69dhctdpt.cloudfront.net');
-            console.log('2. API 엔드포인트:', '/api/memo/');
+            console.log('2. API 엔드포인트:', '/api/memo/user/');
             console.log('3. 경로 파라미터 user_id:', userId);
             console.log('4. 최종 완성된 URL:', apiUrl);
-            console.log('5. URL 구성 방식:', `baseUrl + userId = ${'https://dco69dhctdpt.cloudfront.net/api/memo/'} + ${userId}`);
+            console.log('5. URL 구성 방식:', `baseUrl + userId = ${'https://dco69dhctdpt.cloudfront.net/api/memo/user/'} + ${userId}`);
             console.log('6. HTTP 메서드:', 'GET');
             console.log('7. 요청 헤더:', {
                 'Content-Type': 'application/json',
@@ -123,15 +124,25 @@ export default function OtherMemoList({ userId }) {
             console.log('=== API 응답 상세 분석 ===');
             console.log('API 응답 전체:', result);
             console.log('응답 타입:', typeof result);
-            console.log('응답이 배열인가?', Array.isArray(result));
-            console.log('응답 길이:', result?.length);
+            console.log('응답 구조:', {
+                success: result?.success,
+                hasData: !!result?.data,
+                dataIsArray: result?.data ? Array.isArray(result.data) : 'N/A',
+                dataLength: result?.data?.length || 0,
+                error: result?.error
+            });
             
-            // 이미지에 표시된 API 응답 형태와 비교 분석
-            if (Array.isArray(result)) {
-                console.log('✅ 응답이 배열 형태 (이미지의 200 성공 응답과 일치)');
-                console.log('배열의 첫 번째 요소 분석:');
-                if (result.length > 0) {
-                    const firstMemo = result[0];
+            // 새로운 API 응답 구조 분석
+            if (result.success && Array.isArray(result.data)) {
+                console.log('✅ API 응답 성공 - data 배열에서 메모 추출');
+                console.log('응답 구조:', {
+                    success: result.success,
+                    dataLength: result.data.length,
+                    hasError: !!result.error
+                });
+                
+                if (result.data.length > 0) {
+                    const firstMemo = result.data[0];
                     console.log('첫 번째 메모 객체:', firstMemo);
                     console.log('memoId 필드:', firstMemo.memoId, '타입:', typeof firstMemo.memoId);
                     console.log('title 필드:', firstMemo.title, '타입:', typeof firstMemo.title);
@@ -157,30 +168,28 @@ export default function OtherMemoList({ userId }) {
                         console.log('  - photoUrl:', firstMemo.user.photoUrl);
                     }
                 } else {
-                    console.log('📝 배열이 비어있음 (메모가 없음)');
+                    console.log('📝 data 배열이 비어있음 (메모가 없음)');
                 }
             } else {
-                console.log('❌ 응답이 배열이 아님 (예상과 다름)');
+                console.log('❌ 예상치 못한 응답 구조:', result);
                 console.log('응답 구조 분석:', {
                     keys: Object.keys(result || {}),
-                    hasDetail: result?.detail ? '있음' : '없음',
-                    detailType: result?.detail ? typeof result.detail : 'N/A',
-                    detailIsArray: result?.detail ? Array.isArray(result.detail) : 'N/A'
+                    success: result?.success,
+                    hasData: !!result?.data,
+                    dataIsArray: result?.data ? Array.isArray(result.data) : 'N/A',
+                    error: result?.error
                 });
                 
-                // 422 Validation Error 형태인지 확인
-                if (result?.detail) {
-                    console.log('⚠️ 422 Validation Error 형태로 보임');
-                    console.log('detail 내용:', result.detail);
+                if (result?.error) {
+                    console.log('⚠️ API 에러 응답:', result.error);
                 }
             }
             
             let memoData = [];
             
-            // 이미지에 표시된 API 응답 형태에 맞게 처리
-            // 성공 응답 (HTTP 200): 배열 형태로 직접 반환
-            if (Array.isArray(result)) {
-                memoData = result;
+            // 새로운 API 응답 구조에 맞게 처리
+            if (result.success && Array.isArray(result.data)) {
+                memoData = result.data;
                 console.log('✅ API에서 메모 데이터 추출 성공:', memoData.length);
             } else {
                 console.error('❌ 예상치 못한 응답 구조:', result);
@@ -270,23 +279,59 @@ export default function OtherMemoList({ userId }) {
                                 });
                             }}
                         >
+                            {/* 사용자 정보 표시 */}
+                            {memo.user && (
+                                <View style={styles.userInfoContainer}>
+                                    {memo.user.photoUrl ? (
+                                        <Image 
+                                            source={{ uri: memo.user.photoUrl }} 
+                                            style={styles.userPhoto}
+                                            defaultSource={require('../../../assets/icon.png')}
+                                        />
+                                    ) : (
+                                        <View style={styles.userPhotoPlaceholder}>
+                                            <AntDesign name="user" size={16} color="#999" />
+                                        </View>
+                                    )}
+                                    <Text style={styles.username}>{memo.user.username || '사용자'}</Text>
+                                </View>
+                            )}
+                            
                             <Text style={styles.title}>
                                 {memo.title || '제목 없음'}
                             </Text>
-                            <View style={styles.timeLocationContainer}>
-                                <Text style={styles.timeText}>
-                                    {formatDate(memo.createdAt)}
-                                </Text>
-                                <Text style={styles.location} numberOfLines={1} ellipsizeMode="tail">
-                                    {memo.location?.address || '위치 없음'}
-                                </Text>
-                            </View>
-                            <Text style={styles.content} numberOfLines={2}>
+                            
+                            <Text style={styles.content} numberOfLines={1} ellipsizeMode="tail">
                                 {memo.content}
                             </Text>
-                            <Text style={styles.publicStatus}>
-                                {memo.isPublic ? '공개' : '비공개'}
-                            </Text>
+                            
+                            {/* 파일 이미지 미리보기 */}
+                            {memo.fileUrl && memo.fileUrl.length > 0 && (
+                                <View style={styles.filePreviewContainer}>
+                                    {memo.fileUrl.slice(0, 3).map((url, index) => (
+                                        <Image
+                                            key={index}
+                                            source={{ uri: url }}
+                                            style={styles.filePreview}
+                                            defaultSource={require('../../../assets/icon.png')}
+                                        />
+                                    ))}
+                                    {memo.fileUrl.length > 3 && (
+                                        <Text style={styles.moreFilesText}>+{memo.fileUrl.length - 3}</Text>
+                                    )}
+                                </View>
+                            )}
+                            
+                            <View style={styles.bottomInfo}>
+                                <Text style={styles.publicStatus}>
+                                    {memo.isPublic ? '공개' : '비공개'}
+                                </Text>
+                                {memo.location && memo.location.category && (
+                                    <Text style={styles.categoryText}>
+                                        {memo.location.category}
+                                    </Text>
+                                )}
+                            </View>
                         </TouchableOpacity>
                     ))
                 )}
@@ -304,39 +349,98 @@ const styles = StyleSheet.create({
         paddingBottom: 20,
     },
     memoItem: {
-        backgroundColor: '#eee',
-        padding: 15,
-        borderRadius: 8,
+        backgroundColor: '#fff',
+        padding: 10,
+        borderRadius: 12,
         marginHorizontal: 10,
-        marginVertical: 5,
+        marginVertical: 3,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    userInfoContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    userPhoto: {
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        marginRight: 6,
+    },
+    userPhotoPlaceholder: {
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: '#f0f0f0',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 6,
+    },
+    username: {
+        fontSize: 10,
+        color: '#666',
+        fontWeight: '500',
     },
     title: {
-        fontSize: 16,
-        fontWeight: '500',
+        fontSize: 14,
+        fontWeight: '600',
         marginBottom: 4,
-    },
-    timeLocationContainer: {
-        marginBottom: 4,
-    },
-    timeText: {
-        fontSize: 11,
-        color: '#999',
-        fontWeight: 'bold',
-        marginBottom: 2,
-    },
-    location: {
-        fontSize: 12,
-        color: '#888',
+        color: '#333',
     },
     content: {
-        fontSize: 14,
-        color: '#333',
+        fontSize: 12,
+        color: '#555',
         marginBottom: 4,
     },
-    publicStatus: {
+    filePreviewContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    fileCountText: {
         fontSize: 10,
+        color: '#666',
+        marginRight: 6,
+    },
+    filePreview: {
+        width: 28,
+        height: 28,
+        borderRadius: 4,
+        marginRight: 3,
+    },
+    moreFilesText: {
+        fontSize: 9,
+        color: '#999',
+        fontWeight: '500',
+    },
+    bottomInfo: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    publicStatus: {
+        fontSize: 8,
         color: '#007AFF',
-        fontWeight: 'bold',
+        fontWeight: '600',
+        backgroundColor: '#f0f8ff',
+        paddingHorizontal: 4,
+        paddingVertical: 1,
+        borderRadius: 3,
+    },
+    categoryText: {
+        fontSize: 8,
+        color: '#666',
+        backgroundColor: '#f5f5f5',
+        paddingHorizontal: 4,
+        paddingVertical: 1,
+        borderRadius: 3,
     },
     loadingContainer: {
         flex: 1,
