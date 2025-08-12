@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getScrapMemos } from '../../config/api';
@@ -26,7 +26,9 @@ export default function ScrapMemo() {
       const result = await getScrapMemos(userToken);
       
       if (result.success && result.data) {
-        setScrapMemos(result.data);
+        // isPublic이 true인 메모만 필터링
+        const publicMemos = result.data.filter(memo => memo.isPublic === true);
+        setScrapMemos(publicMemos);
       } else {
         setError('스크랩 메모 목록을 가져올 수 없습니다.');
       }
@@ -96,23 +98,44 @@ export default function ScrapMemo() {
               style={styles.memoItem}
               onPress={() => navigation.navigate('MemoView', { memo })}
             >
+              {/* 사용자 정보 표시 */}
+              {memo.user && (
+                <View style={styles.userInfoContainer}>
+                  {memo.user.photoUrl ? (
+                    <Image 
+                      source={{ uri: memo.user.photoUrl }} 
+                      style={styles.userPhoto}
+                      defaultSource={require('../../../assets/icon.png')}
+                    />
+                  ) : (
+                    <View style={styles.userPhotoPlaceholder}>
+                      <AntDesign name="user" size={16} color="#999" />
+                    </View>
+                  )}
+                  <Text style={styles.username}>{memo.user.username || '사용자'}</Text>
+                </View>
+              )}
+              
               <Text style={styles.title}>
                 {memo.title || '제목 없음'}
               </Text>
-              <View style={styles.timeLocationContainer}>
-                <Text style={styles.timeText}>
-                  {formatDate(memo.createdAt)}
-                </Text>
-                <Text style={styles.location} numberOfLines={1} ellipsizeMode="tail">
-                  {memo.location?.address || '위치 없음'}
-                </Text>
-              </View>
-              <Text style={styles.content} numberOfLines={2}>
+              
+              <Text style={styles.content} numberOfLines={1} ellipsizeMode="tail">
                 {memo.content}
               </Text>
-              <Text style={styles.publicStatus}>
-                {memo.isPublic ? '공개' : '비공개'}
-              </Text>
+              
+              
+              
+              <View style={styles.bottomInfo}>
+                <Text style={styles.publicStatus}>
+                  {memo.isPublic ? '공개' : '비공개'}
+                </Text>
+                {memo.location && memo.location.category && (
+                  <Text style={styles.categoryText}>
+                    {memo.location.category}
+                  </Text>
+                )}
+              </View>
             </TouchableOpacity>
           ))
         )}
@@ -130,39 +153,77 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   memoItem: {
-    backgroundColor: '#eee',
-    padding: 15,
-    borderRadius: 8,
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 12,
     marginHorizontal: 10,
-    marginVertical: 5,
+    marginVertical: 3,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  userInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  userPhoto: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    marginRight: 6,
+  },
+  userPhotoPlaceholder: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 6,
+  },
+  username: {
+    fontSize: 10,
+    color: '#666',
+    fontWeight: '500',
   },
   title: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
     marginBottom: 4,
-  },
-  timeLocationContainer: {
-    marginBottom: 4,
-  },
-  timeText: {
-    fontSize: 11,
-    color: '#999',
-    fontWeight: 'bold',
-    marginBottom: 2,
-  },
-  location: {
-    fontSize: 12,
-    color: '#888',
+    color: '#333',
   },
   content: {
-    fontSize: 14,
-    color: '#333',
+    fontSize: 12,
+    color: '#555',
     marginBottom: 4,
   },
+  bottomInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   publicStatus: {
-    fontSize: 10,
+    fontSize: 8,
     color: '#007AFF',
-    fontWeight: 'bold',
+    fontWeight: '600',
+    backgroundColor: '#f0f8ff',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 3,
+  },
+  categoryText: {
+    fontSize: 8,
+    color: '#666',
+    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 3,
   },
   loadingContainer: {
     flex: 1,
