@@ -1406,6 +1406,51 @@ export const sendEmailVerification = async (email) => {
 // 이메일 인증 코드 재발송 함수
 
 
+// 스크랩 상태 확인 함수
+export const checkIsScraped = async (memoId, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/memo/check-is-scraped/${memoId}`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('스크랩 상태 확인 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 스크랩 상태 확인 성공:', memoId, result);
+    return result;
+  } catch (error) {
+    console.error('❌ 스크랩 상태 확인 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/memo/check-is-scraped/${memoId}`);
+    throw error;
+  }
+};
+
 // 스크랩 메모 함수
 export const scrapMemo = async (memoId, userToken) => {
   const config = getApiConfig();
@@ -1441,7 +1486,21 @@ export const scrapMemo = async (memoId, userToken) => {
       throw new Error(errorMessage);
     }
 
-    const result = await response.json();
+    // API 응답이 문자열일 수 있으므로 먼저 텍스트로 읽기
+    const responseText = await response.text();
+    console.log('스크랩 API 응답 텍스트:', responseText);
+    
+    let result;
+    try {
+      // JSON으로 파싱 시도
+      result = JSON.parse(responseText);
+      console.log('스크랩 API 응답 JSON:', result);
+    } catch (parseError) {
+      // JSON 파싱 실패 시 문자열 그대로 사용
+      result = responseText;
+      console.log('스크랩 API 응답 문자열:', result);
+    }
+    
     console.log('✅ 메모 스크랩 성공:', memoId);
     return result;
   } catch (error) {
@@ -1486,7 +1545,21 @@ export const unscrapMemo = async (memoId, userToken) => {
       throw new Error(errorMessage);
     }
 
-    const result = await response.json();
+    // API 응답이 문자열일 수 있으므로 먼저 텍스트로 읽기
+    const responseText = await response.text();
+    console.log('언스크랩 API 응답 텍스트:', responseText);
+    
+    let result;
+    try {
+      // JSON으로 파싱 시도
+      result = JSON.parse(responseText);
+      console.log('언스크랩 API 응답 JSON:', result);
+    } catch (parseError) {
+      // JSON 파싱 실패 시 문자열 그대로 사용
+      result = responseText;
+      console.log('언스크랩 API 응답 문자열:', result);
+    }
+    
     console.log('✅ 메모 언스크랩 성공:', memoId);
     return result;
   } catch (error) {

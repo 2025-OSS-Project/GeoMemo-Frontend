@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Image, ActivityIndicator, Alert, Linking } from 'react-native';
 import { Ionicons, FontAwesome, AntDesign } from '@expo/vector-icons';
-import { getMemoById, scrapMemo, unscrapMemo, getCurrentUserInfo } from '../../config/api';
+import { getMemoById, scrapMemo, unscrapMemo, getCurrentUserInfo, checkIsScraped } from '../../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function MemoView({ navigation, route }) {
@@ -40,6 +40,11 @@ export default function MemoView({ navigation, route }) {
     getMyUserId();
   }, []);
 
+  // 스크랩 상태 변화 추적
+  useEffect(() => {
+    console.log('🔄 isScrapped 상태 변경됨:', isScrapped);
+  }, [isScrapped]);
+
   // 메모 데이터 가져오기
   useEffect(() => {
     const fetchMemoData = async () => {
@@ -74,11 +79,11 @@ export default function MemoView({ navigation, route }) {
           
           setMemo(memoFromParams);
           
-          // 스크랩 상태 설정 (백엔드에서 제공하는 경우)
-          if (memoFromParams.isScrapped !== undefined) {
-            console.log('전달받은 메모의 스크랩 상태:', memoFromParams.isScrapped);
-            setIsScrapped(memoFromParams.isScrapped);
-          }
+                     // 스크랩 상태는 항상 API로 최신 상태 확인
+           console.log('스크랩 상태 API로 확인 시작');
+           const scrapMemoId = memoFromParams.memoId || memoFromParams.id;
+           console.log('스크랩 상태 확인에 사용할 memoId:', scrapMemoId);
+           await checkScrapStatus(scrapMemoId);
           
           setIsLoading(false);
           return;
@@ -129,11 +134,11 @@ export default function MemoView({ navigation, route }) {
           console.log('✅ 메모 데이터 추출 성공:', memoData);
           console.log('메모 데이터 키들:', Object.keys(memoData));
           setMemo(memoData);
-          // 메모의 스크랩 상태 설정 (백엔드에서 제공하는 경우)
-          if (memoData.isScrapped !== undefined) {
-            console.log('메모 데이터의 스크랩 상태:', memoData.isScrapped);
-            setIsScrapped(memoData.isScrapped);
-          }
+                     // 스크랩 상태는 항상 API로 최신 상태 확인
+           console.log('스크랩 상태 API로 확인 시작');
+           const scrapMemoId = memoData.memoId || memoData.id;
+           console.log('스크랩 상태 확인에 사용할 memoId:', scrapMemoId);
+           await checkScrapStatus(scrapMemoId);
         } else {
           console.error('메모 데이터를 추출할 수 없음');
           setError('메모 데이터를 불러올 수 없습니다.');
@@ -149,6 +154,67 @@ export default function MemoView({ navigation, route }) {
     fetchMemoData();
   }, [memoId, memoFromParams]);
 
+  // 스크랩 상태 확인 함수
+  const checkScrapStatus = async (memoId) => {
+    try {
+      console.log('=== 스크랩 상태 확인 시작 ===');
+      console.log('확인할 메모 ID:', memoId);
+      
+      const userToken = await AsyncStorage.getItem('userToken');
+      if (!userToken) {
+        console.log('토큰이 없어 스크랩 상태를 확인할 수 없습니다.');
+        return;
+      }
+
+      console.log('API 호출 시작...');
+      console.log('최종 API URL:', `https://dco69dhctdpt.cloudfront.net/api/memo/check-is-scraped/${memoId}`);
+      const response = await checkIsScraped(memoId, userToken);
+      console.log('스크랩 상태 확인 API 응답:', response);
+      console.log('응답 타입:', typeof response);
+      
+             // API 응답에 따라 스크랩 상태 설정
+       if (response && response.is_scraped !== undefined) {
+         // { "is_scraped": true/false } 형태인 경우
+         console.log('is_scraped 응답 처리:', response.is_scraped);
+         console.log('is_scraped 타입:', typeof response.is_scraped);
+         console.log('is_scraped 값:', response.is_scraped);
+         
+         // boolean 값으로 변환하여 설정
+         const scrapStatus = Boolean(response.is_scraped);
+         console.log('변환된 스크랩 상태:', scrapStatus);
+         setIsScrapped(scrapStatus);
+       } else if (response && typeof response === 'string') {
+         // 문자열 응답인 경우 (예: "true", "false")
+         console.log('문자열 응답 처리:', response);
+         const newStatus = response.toLowerCase().trim() === 'true';
+         console.log('새로운 스크랩 상태:', newStatus);
+         setIsScrapped(newStatus);
+       } else if (response && typeof response === 'boolean') {
+         // 불린 응답인 경우
+         console.log('불린 응답 처리:', response);
+         setIsScrapped(response);
+       } else if (response && response.data !== undefined) {
+         // { data: boolean } 형태인 경우
+         console.log('객체 응답 처리:', response.data);
+         setIsScrapped(response.data);
+       } else if (response && response.success !== undefined) {
+         // { success: boolean } 형태인 경우
+         console.log('success 응답 처리:', response.success);
+         setIsScrapped(response.success);
+       } else {
+         console.log('예상치 못한 스크랩 상태 응답:', response);
+         console.log('기본값 false로 설정');
+         setIsScrapped(false);
+       }
+      
+      console.log('=== 스크랩 상태 확인 완료 ===');
+    } catch (error) {
+      console.error('스크랩 상태 확인 실패:', error);
+      // 에러가 발생해도 기본값으로 설정
+      setIsScrapped(false);
+    }
+  };
+
   const handleScrap = async () => {
     if (isScrapLoading) return; // 이미 처리 중이면 무시
     
@@ -163,23 +229,47 @@ export default function MemoView({ navigation, route }) {
         return;
       }
 
+      console.log('=== 스크랩 처리 시작 ===');
+      console.log('현재 스크랩 상태:', isScrapped);
+      console.log('처리할 메모 ID:', memoId);
+
       let response;
       
       if (isScrapped) {
         // 언스크랩
+        console.log('언스크랩 처리 중...');
         response = await unscrapMemo(memoId, userToken);
-        if (response.success) {
+        console.log('언스크랩 API 응답:', response);
+        
+        // API 응답 확인 (문자열 또는 객체)
+        if (response && (response.success === true || response === 'true' || response === true)) {
+          console.log('언스크랩 성공, 상태를 false로 변경');
           setIsScrapped(false);
           Alert.alert('성공', '메모가 스크랩에서 제거되었습니다.');
+        } else {
+          console.log('언스크랩 실패 또는 예상치 못한 응답:', response);
+          Alert.alert('오류', '언스크랩 처리에 실패했습니다.');
         }
-      } else {
-        // 스크랩
-        response = await scrapMemo(memoId, userToken);
-        if (response.success) {
-          setIsScrapped(true);
-          Alert.alert('성공', '메모가 스크랩되었습니다.');
-        }
-      }
+             } else {
+         // 스크랩
+         console.log('스크랩 처리 중...');
+         response = await scrapMemo(memoId, userToken);
+         console.log('스크랩 API 응답:', response);
+         
+         // API 응답 확인 (문자열 또는 객체)
+         if (response && (response.success === true || response === 'true' || response === true)) {
+           console.log('스크랩 성공, 상태를 true로 변경');
+           setIsScrapped(true);
+           Alert.alert('성공', '메모가 스크랩되었습니다.');
+         } else {
+           console.log('스크랩 실패 또는 예상치 못한 응답:', response);
+           Alert.alert('오류', '스크랩 처리에 실패했습니다.');
+         }
+       }
+       
+       // 스크랩/언스크랩 처리 후 최신 상태 확인
+       console.log('스크랩 처리 완료, 최신 상태 확인 시작');
+       await checkScrapStatus(memoId);
       
     } catch (error) {
       console.error('스크랩 처리 중 오류:', error);
@@ -328,16 +418,17 @@ export default function MemoView({ navigation, route }) {
         </TouchableOpacity>
 
                  <TouchableOpacity onPress={handleScrap} disabled={isScrapLoading}>
-           {isScrapLoading ? (
-             <ActivityIndicator size="small" color="#6c757d" />
-           ) : (
-             isScrapped ? (
-               <FontAwesome name="bookmark" size={24} color="#000000" />
-             ) : (
-               <FontAwesome name="bookmark-o" size={24} color="#6c757d" />
-             )
-           )}
-         </TouchableOpacity>
+          {isScrapLoading ? (
+            <ActivityIndicator size="small" color="#6c757d" />
+          ) : (
+            isScrapped ? (
+              <FontAwesome name="bookmark" size={24} color="#000000" />
+            ) : (
+              <FontAwesome name="bookmark-o" size={24} color="#6c757d" />
+            )
+          )}
+        </TouchableOpacity>
+
       </View>
 
       <View style={styles.mainContainer}>
