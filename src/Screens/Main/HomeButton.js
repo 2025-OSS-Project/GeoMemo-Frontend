@@ -3,7 +3,7 @@ import { TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Entypo } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
-export default function HomeButton() {
+export default function HomeButton({ style }) {
   const navigation = useNavigation();
   const route = useRoute();
 
@@ -27,7 +27,8 @@ export default function HomeButton() {
     <TouchableOpacity 
       style={[
         styles.homeButton, 
-        route.name === 'MemoMap' && styles.homeButtonActive
+        route.name === 'MemoMap' && styles.homeButtonActive,
+        style
       ]} 
       onPress={handleHomePress}
       activeOpacity={0.7}
@@ -44,9 +45,6 @@ export default function HomeButton() {
 
 const styles = StyleSheet.create({
   homeButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
     width: 56,
     height: 56,
     borderRadius: 28,

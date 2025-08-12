@@ -3,11 +3,12 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Ale
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getUserInfoById, followUser, unfollowUser, getFollowingList } from '../../config/api';
+import { getUserInfoById, followUser, unfollowUser, getFollowingList, getFollowingCount, getFollowersCount } from '../../config/api';
 
 import OtherMemoList from './OtherMemoList';
 import Insight from './Insight';
 import HomeButton from '../Main/HomeButton';
+import BottomButtons from '../Main/BottomButtons';
 
 export default function OtherProfile() {
   const navigation = useNavigation();
@@ -82,7 +83,27 @@ export default function OtherProfile() {
 
       // API를 통해 다른 사용자 정보 조회
       const userData = await getUserInfoById(otherUserId, userToken);
-      setUserInfo(userData);
+      
+      // 팔로잉/팔로워 수를 별도로 조회하여 업데이트
+      try {
+        const [followingCount, followersCount] = await Promise.all([
+          getFollowingCount(userToken),
+          getFollowersCount(userToken)
+        ]);
+        
+        // 사용자 정보에 팔로우 수 업데이트
+        const updatedUserData = {
+          ...userData,
+          following_count: followingCount,
+          follower_count: followersCount
+        };
+        
+        setUserInfo(updatedUserData);
+        console.log('✅ 다른 사용자 팔로우 수 업데이트 완료:', { followingCount, followersCount });
+      } catch (followError) {
+        console.warn('팔로우 수 조회 실패, 기본 정보만 표시:', followError.message);
+        setUserInfo(userData);
+      }
       
       // 팔로우 상태 확인
       await checkFollowStatus(userToken);
@@ -111,37 +132,26 @@ export default function OtherProfile() {
         console.log('팔로잉 중인 사용자들:', followingUsers);
         console.log('팔로잉 사용자 수:', followingUsers.length);
         
-        // 각 사용자의 ID 구조 확인
-        followingUsers.forEach((user, index) => {
-          console.log(`사용자 ${index}:`, {
-            id: user.id,
-            user_id: user.user_id,
-            nickname: user.nickname,
-            'id 타입': typeof user.id,
-            'user_id 타입': typeof user.user_id
-          });
-        });
-        
         // 현재 프로필의 사용자가 팔로잉 목록에 있는지 확인
         const followingUser = followingUsers.find(user => {
-          const userId = user.id || user.user_id;
+          const userId = user.userId;
           const isMatch = userId && userId.toString() === otherUserId.toString();
           console.log(`비교: ${userId} === ${otherUserId} => ${isMatch}`);
           return isMatch;
         });
         
-                 if (followingUser) {
-           console.log('찾은 팔로잉 사용자:', followingUser);
-           console.log('status 상태:', followingUser.status);
-           
-           if (followingUser.status === 'approved') {
-             setFollowStatus('following');
-             console.log('✅ 팔로우 중인 사용자입니다. (승인됨)');
-           } else {
-             setFollowStatus('pending');
-             console.log('⏳ 팔로우 요청 대기중인 사용자입니다. (승인 대기)');
-           }
-         } else {
+        if (followingUser) {
+          console.log('찾은 팔로잉 사용자:', followingUser);
+          console.log('status 상태:', followingUser.status);
+          
+          if (followingUser.status === 'approved') {
+            setFollowStatus('following');
+            console.log('✅ 팔로우 중인 사용자입니다. (승인됨)');
+          } else {
+            setFollowStatus('pending');
+            console.log('⏳ 팔로우 요청 대기중인 사용자입니다. (승인 대기)');
+          }
+        } else {
           setFollowStatus('none');
           console.log('❌ 팔로우하지 않는 사용자입니다.');
         }
@@ -153,6 +163,30 @@ export default function OtherProfile() {
     } catch (error) {
       console.error('❌ 팔로우 상태 확인 실패:', error);
       setFollowStatus('none');
+    }
+  };
+
+  // 팔로우 수 새로고침 함수
+  const refreshFollowCounts = async () => {
+    try {
+      const userToken = await AsyncStorage.getItem('userToken');
+      if (!userToken) return;
+
+      const [followingCount, followersCount] = await Promise.all([
+        getFollowingCount(userToken),
+        getFollowersCount(userToken)
+      ]);
+      
+      // 현재 사용자 정보에 팔로우 수 업데이트
+      setUserInfo(prevInfo => ({
+        ...prevInfo,
+        following_count: followingCount,
+        follower_count: followersCount
+      }));
+      
+      console.log('✅ 팔로우 수 새로고침 완료:', { followingCount, followersCount });
+    } catch (error) {
+      console.warn('팔로우 수 새로고침 실패:', error.message);
     }
   };
 
@@ -179,20 +213,13 @@ export default function OtherProfile() {
         if (userInfo?.user_privacy === 'open') {
           // 전체 공개: 자동 승인
           setFollowStatus('following');
-          Alert.alert('팔로우 성공', '팔로우되었습니다.');
         } else if (userInfo?.user_privacy === 'semi') {
           // 일부 공개: 승인 대기
           setFollowStatus('pending');
-          Alert.alert('팔로우 요청', '팔로우 요청이 전송되었습니다. 승인을 기다려주세요.');
         }
         
-        // 팔로우 상태를 다시 확인하여 최신 상태 반영
-        setTimeout(async () => {
-          const userToken = await AsyncStorage.getItem('userToken');
-          if (userToken) {
-            await checkFollowStatus(userToken);
-          }
-        }, 1000);
+        // 팔로우 수 새로고침
+        await refreshFollowCounts();
       }
       
     } catch (error) {
@@ -230,7 +257,9 @@ export default function OtherProfile() {
       
       if (response.success) {
         setFollowStatus('none');
-        Alert.alert('팔로우 취소', '팔로우가 취소되었습니다.');
+        
+        // 팔로우 수 새로고침
+        await refreshFollowCounts();
       }
       
     } catch (error) {
@@ -342,14 +371,14 @@ export default function OtherProfile() {
             )}
           </TouchableOpacity>
           <View style={styles.followRow}>
-            <TouchableOpacity style={styles.followBox} onPress={() => navigation.navigate('FollowManage', { initialTab: 'followers', userNickname: userInfo?.user_nickname || '사용자' })}>
+            <View style={styles.followBox}>
               <Text style={styles.followNumber}>{userInfo?.follower_count || 0}</Text>
               <Text style={styles.followLabel}>Followers</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.followBox} onPress={() => navigation.navigate('FollowManage', { initialTab: 'following', userNickname: userInfo?.user_nickname || '사용자' })}>
+            </View>
+            <View style={styles.followBox}>
               <Text style={styles.followNumber}>{userInfo?.following_count || 0}</Text>
               <Text style={styles.followLabel}>Following</Text>
-            </TouchableOpacity>
+            </View>
           </View>
         </View>
       </View>
@@ -396,7 +425,7 @@ export default function OtherProfile() {
       </View>
       
       {/* 홈 버튼 */}
-      <HomeButton />
+      <BottomButtons />
     </View>
   );
 }

@@ -3,13 +3,19 @@ import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert, ActivityIndi
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeButton from '../Main/HomeButton';
-import { getFollowingList, unfollowUser } from '../../config/api';
+import BottomButtons from '../Main/BottomButtons';
+import { getFollowingList, unfollowUser, followUser } from '../../config/api';
 
-const Following = forwardRef(({ onDataUpdate }, ref) => {
+const Following = forwardRef(({ onDataUpdate, otherUserId, onDataChange }, ref) => {
   const navigation = useNavigation();
   const [followingData, setFollowingData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  console.log('=== Following 컴포넌트 ===');
+  console.log('otherUserId:', otherUserId);
+  console.log('otherUserId 타입:', typeof otherUserId);
+  console.log('onDataChange prop:', onDataChange);
 
   // 부모 컴포넌트에 데이터 개수 전달
   useEffect(() => {
@@ -26,7 +32,7 @@ const Following = forwardRef(({ onDataUpdate }, ref) => {
     getData: () => followingData
   }));
 
-  // 팔로잉 목록 가져오기
+  // 팔로잉 목록 가져오기 (새로운 API 엔드포인트 사용)
   const fetchFollowingList = async () => {
     try {
       const token = await AsyncStorage.getItem('userToken');
@@ -38,38 +44,16 @@ const Following = forwardRef(({ onDataUpdate }, ref) => {
       const response = await getFollowingList(token);
       console.log('팔로잉 API 응답:', response);
       
-      if (response && response.data) {
-        let users = [];
-        
-        // 응답 구조에 따라 데이터 추출
-        if (response.data.users && Array.isArray(response.data.users)) {
-          users = response.data.users;
-        } else if (Array.isArray(response.data)) {
-          users = response.data;
-        } else if (response.success && response.data.users) {
-          users = response.data.users;
-        }
-        
+      // 새로운 API 응답 구조에 맞춰 데이터 추출
+      if (response && response.success && response.data && response.data.users) {
+        const users = response.data.users;
         console.log('추출된 팔로잉 데이터:', users);
         
-        // 데이터 유효성 검사 및 필터링
-        const validUsers = users.filter(user => {
-          if (!user || typeof user !== 'object') {
-            console.log('유효하지 않은 사용자 객체:', user);
-            return false;
-          }
-          
-          // nickname은 필수, id나 user_id가 없으면 email을 식별자로 사용
-          const hasRequiredFields = user.nickname && (user.id || user.user_id || user.email);
-          if (!hasRequiredFields) {
-            console.log('필수 필드가 누락된 사용자:', user);
-            return false;
-          }
-          
-          return true;
-        });
+        // status가 'none'인 사용자들을 필터링하여 제거
+        const validUsers = users.filter(user => user.status !== 'none');
+        console.log('필터링된 팔로잉 데이터:', validUsers);
         
-        console.log('유효한 팔로잉 데이터:', validUsers);
+        // API에서 받은 데이터를 그대로 사용
         setFollowingData(validUsers);
       } else {
         console.log('팔로잉 데이터 없음 또는 실패');
@@ -87,61 +71,62 @@ const Following = forwardRef(({ onDataUpdate }, ref) => {
 
   // 언팔로우 처리
   const handleUnfollow = async (userId, nickname) => {
-    Alert.alert(
-      '언팔로우',
-      `${nickname}님을 언팔로우하시겠습니까?`,
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '언팔로우',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const token = await AsyncStorage.getItem('userToken');
-              if (!token) {
-                Alert.alert('오류', '로그인이 필요합니다.');
-                return;
-              }
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        Alert.alert('오류', '로그인이 필요합니다.');
+        return;
+      }
 
-              // 즉시 UI에서 해당 사용자 제거 (낙관적 업데이트)
-              setFollowingData(prevData => 
-                prevData.filter(user => {
-                  const currentUserId = user.id || user.user_id || user.email;
-                  return currentUserId !== userId;
-                })
-              );
+      await unfollowUser(userId, token);
+      
+      // 언팔로우/취소 성공 시 해당 사용자를 목록에서 제거
+      setFollowingData(prevData => 
+        prevData.filter(user => user.userId !== userId)
+      );
+      
+      // 부모 컴포넌트에 데이터 변경 알림
+      if (onDataChange && typeof onDataChange === 'function') {
+        console.log('✅ 팔로잉 데이터 변경 알림 전송 (언팔로우)');
+        onDataChange();
+      }
+    } catch (error) {
+      console.error('언팔로우 실패:', error);
+      Alert.alert('오류', '언팔로우에 실패했습니다.');
+    }
+  };
 
-              // API 호출
-              await unfollowUser(userId, token);
-              
-              // 성공 시 추가 알림 없이 목록 새로고침
-              fetchFollowingList();
-            } catch (error) {
-              console.error('언팔로우 실패:', error);
-              
-              // 실패 시 원래 데이터 복원
-              fetchFollowingList();
-              
-              // 오류 메시지 표시
-              let errorMessage = '언팔로우에 실패했습니다.';
-              if (error.message) {
-                if (error.message.includes('401')) {
-                  errorMessage = '인증이 만료되었습니다. 다시 로그인해주세요.';
-                } else if (error.message.includes('404')) {
-                  errorMessage = '사용자를 찾을 수 없습니다.';
-                } else if (error.message.includes('500')) {
-                  errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
-                } else {
-                  errorMessage = error.message;
-                }
-              }
-              
-              Alert.alert('오류', errorMessage);
-            }
-          }
-        }
-      ]
-    );
+  // 팔로우 처리
+  const handleFollow = async (userId, nickname) => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        Alert.alert('오류', '로그인이 필요합니다.');
+        return;
+      }
+
+      await followUser(userId, token);
+      
+      // 팔로우 성공 시 해당 사용자를 pending 상태로 목록에 추가
+      // (일부 공개 사용자로 가정)
+      const newUser = {
+        userId: userId,
+        nickname: nickname,
+        profileImageUrl: null, // 기존 데이터에서 가져올 수 없으므로 null
+        status: 'pending'
+      };
+      
+      setFollowingData(prevData => [...prevData, newUser]);
+      
+      // 부모 컴포넌트에 데이터 변경 알림
+      if (onDataChange && typeof onDataChange === 'function') {
+        console.log('✅ 팔로잉 데이터 변경 알림 전송 (팔로우)');
+        onDataChange();
+      }
+    } catch (error) {
+      console.error('팔로우 실패:', error);
+      Alert.alert('오류', '팔로우에 실패했습니다.');
+    }
   };
 
   // 화면 포커스 시 데이터 새로고침
@@ -158,61 +143,55 @@ const Following = forwardRef(({ onDataUpdate }, ref) => {
   };
 
   const renderItem = ({ item }) => {
-    // 데이터 유효성 검사 개선
-    if (!item || typeof item !== 'object') {
-      console.log('유효하지 않은 팔로잉 아이템 (타입 오류):', item);
-      return null;
-    }
-
-    // 필수 필드 확인 - id가 없으면 email을 식별자로 사용
-    const userId = item.id || item.user_id || item.email;
+    // API에서 받은 데이터를 그대로 사용
+    const userId = item.userId;
     const nickname = item.nickname;
-    const email = item.email;
     const status = item.status;
     const profileImageUrl = item.profileImageUrl;
-
-    if (!userId || !nickname) {
-      console.log('필수 필드가 누락된 팔로잉 아이템:', item);
-      return null;
-    }
     
     return (
       <View style={styles.followRow}>
-                 <TouchableOpacity
-           style={styles.profileCircle}
-           onPress={() => navigation.navigate('OtherProfile', { userId: userId })}
-         >
-           {profileImageUrl ? (
-             <Image 
-               source={{ uri: profileImageUrl }} 
-               style={styles.profileImage}
-               resizeMode="cover"
-             />
-           ) : null}
-         </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.profileCircle}
+          onPress={() => navigation.navigate('OtherProfile', { userId: userId })}
+        >
+          {profileImageUrl ? (
+            <Image 
+              source={{ uri: profileImageUrl }} 
+              style={styles.profileImage}
+              resizeMode="cover"
+            />
+          ) : null}
+        </TouchableOpacity>
         
-                 <View style={styles.userInfo}>
-           <Text style={styles.username}>{nickname}</Text>
-           {status && (
-             <Text style={[styles.statusText, 
-               status === 'approved' ? styles.approvedStatus : styles.pendingStatus
-             ]}>
-               {status === 'approved' ? '팔로잉 중' : '요청 대기중'}
-             </Text>
-           )}
-         </View>
-
-                 <TouchableOpacity
-           style={[
-             styles.unfollowButton,
-             { backgroundColor: status === 'approved' ? '#FF3B30' : '#8E8E93' }
-           ]}
-           onPress={() => handleUnfollow(userId, nickname)}
-         >
-                       <Text style={styles.unfollowButtonText}>
-              {status === 'approved' ? 'Unfollow' : 'Cancel'}
+        <View style={styles.userInfo}>
+          <Text style={styles.username}>{nickname}</Text>
+          {status && (
+            <Text style={[styles.statusText, 
+              status === 'approved' ? styles.approvedStatus : styles.pendingStatus
+            ]}>
+              {status === 'approved' ? '팔로잉 중' : '요청 대기중'}
             </Text>
-         </TouchableOpacity>
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={[
+            styles.unfollowButton,
+            { backgroundColor: status === 'approved' ? '#FF3B30' : status === 'none' ? '#007AFF' : '#8E8E93' }
+          ]}
+          onPress={() => {
+            if (status === 'approved' || status === 'pending') {
+              handleUnfollow(userId, nickname);
+            } else if (status === 'none') {
+              handleFollow(userId, nickname);
+            }
+          }}
+        >
+          <Text style={styles.unfollowButtonText}>
+            {status === 'approved' ? 'Unfollow' : status === 'none' ? 'Follow' : 'Cancel'}
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -224,7 +203,7 @@ const Following = forwardRef(({ onDataUpdate }, ref) => {
           <ActivityIndicator size="large" color="#333" />
           <Text style={styles.loadingText}>팔로잉 목록을 불러오는 중...</Text>
         </View>
-        <HomeButton />
+        <BottomButtons />
       </View>
     );
   }
@@ -234,7 +213,7 @@ const Following = forwardRef(({ onDataUpdate }, ref) => {
       <FlatList
         data={followingData}
         keyExtractor={(item, index) => {
-          const userId = item?.id || item?.user_id || item?.email;
+          const userId = item?.userId;
           return userId ? userId.toString() : `following-${index}`;
         }}
         renderItem={renderItem}
@@ -260,23 +239,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   listContainer: {
-    gap: 16,
-    paddingTop: 16,
+    gap: 12,
+    paddingTop: 12,
     paddingBottom: 100,
   },
-     followRow: {
+  followRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     borderBottomWidth: 0.5,
     borderBottomColor: '#E5E5E5',
     backgroundColor: '#fff',
   },
   profileCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#F0F0F0',
     justifyContent: 'center',
     alignItems: 'center',
@@ -287,44 +266,34 @@ const styles = StyleSheet.create({
   profileImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 24,
-  },
-  profileInitial: {
-    color: '#666',
-    fontSize: 18,
-    fontWeight: '600',
+    borderRadius: 20,
   },
   userInfo: {
     flex: 1,
-    marginLeft: 16,
+    marginLeft: 12,
     justifyContent: 'center',
   },
   username: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#262626',
-    marginBottom: 4,
-  },
-  email: {
-    fontSize: 13,
-    color: '#8E8E93',
     marginBottom: 2,
   },
-       unfollowButton: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 16,
-      minWidth: 60,
-      alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 2,
-      elevation: 2,
-    },
+  unfollowButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    minWidth: 50,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
   unfollowButtonText: {
     color: '#fff',
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
   },
   loadingContainer: {
@@ -355,14 +324,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   statusText: {
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 11,
+    marginTop: 2,
   },
   approvedStatus: {
-    color: '#34C759', // 예시 색상
+    color: '#34C759',
   },
   pendingStatus: {
-    color: '#FF9500', // 예시 색상
+    color: '#FF9500',
   },
 });
 

@@ -3,13 +3,19 @@ import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert, ActivityIndi
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeButton from '../Main/HomeButton';
-import { getFollowersList, acceptFollowRequest, declineFollowRequest, defollowUser } from '../../config/api';
+import BottomButtons from '../Main/BottomButtons';
+import { getFollowersList, defollowUser } from '../../config/api';
 
-const Follower = forwardRef(({ onDataUpdate }, ref) => {
+const Follower = forwardRef(({ onDataUpdate, otherUserId, onDataChange }, ref) => {
     const navigation = useNavigation();
     const [followersData, setFollowersData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+
+    console.log('=== Follower 컴포넌트 ===');
+    console.log('otherUserId:', otherUserId);
+    console.log('otherUserId 타입:', typeof otherUserId);
+    console.log('onDataChange prop:', onDataChange);
 
     // 부모 컴포넌트에 데이터 개수 전달
     useEffect(() => {
@@ -26,7 +32,7 @@ const Follower = forwardRef(({ onDataUpdate }, ref) => {
         getData: () => followersData
     }));
 
-    // 팔로워 목록 가져오기
+    // 팔로워 목록 가져오기 (새로운 API 엔드포인트 사용)
     const fetchFollowersList = async () => {
         try {
             const token = await AsyncStorage.getItem('userToken');
@@ -38,39 +44,13 @@ const Follower = forwardRef(({ onDataUpdate }, ref) => {
             const response = await getFollowersList(token);
             console.log('팔로워 API 응답:', response);
             
-            if (response && response.data) {
-                let users = [];
-                
-                // 응답 구조에 따라 데이터 추출
-                if (response.data.users && Array.isArray(response.data.users)) {
-                    users = response.data.users;
-                } else if (Array.isArray(response.data)) {
-                    users = response.data;
-                } else if (response.success && response.data.users) {
-                    users = response.data.users;
-                }
-                
+            // 새로운 API 응답 구조에 맞춰 데이터 추출
+            if (response && response.success && response.data && response.data.users) {
+                const users = response.data.users;
                 console.log('추출된 팔로워 데이터:', users);
                 
-                // 데이터 유효성 검사 및 필터링
-                const validUsers = users.filter(user => {
-                    if (!user || typeof user !== 'object') {
-                        console.log('유효하지 않은 사용자 객체:', user);
-                        return false;
-                    }
-                    
-                    // nickname은 필수, id나 user_id가 없으면 email을 식별자로 사용
-                    const hasRequiredFields = user.nickname && (user.id || user.user_id || user.email);
-                    if (!hasRequiredFields) {
-                        console.log('필수 필드가 누락된 사용자:', user);
-                        return false;
-                    }
-                    
-                    return true;
-                });
-                
-                console.log('유효한 팔로워 데이터:', validUsers);
-                setFollowersData(validUsers);
+                // API에서 받은 데이터를 그대로 사용
+                setFollowersData(users);
             } else {
                 console.log('팔로워 데이터 없음 또는 실패');
                 setFollowersData([]);
@@ -83,57 +63,6 @@ const Follower = forwardRef(({ onDataUpdate }, ref) => {
             setLoading(false);
             setRefreshing(false);
         }
-    };
-
-    // 팔로우 요청 승인 처리
-    const handleAccept = async (userId, nickname) => {
-        try {
-            const token = await AsyncStorage.getItem('userToken');
-            if (!token) {
-                Alert.alert('오류', '로그인이 필요합니다.');
-                return;
-            }
-
-            await acceptFollowRequest(userId, token);
-            Alert.alert('성공', `${nickname}님의 팔로우 요청을 승인했습니다.`);
-            // 목록 새로고침
-            fetchFollowersList();
-        } catch (error) {
-            console.error('팔로우 요청 승인 실패:', error);
-            Alert.alert('오류', '팔로우 요청 승인에 실패했습니다.');
-        }
-    };
-
-    // 팔로우 요청 거절 처리
-    const handleDecline = async (userId, nickname) => {
-        Alert.alert(
-            '팔로우 요청 거절',
-            `${nickname}님의 팔로우 요청을 거절하시겠습니까?`,
-            [
-                { text: '취소', style: 'cancel' },
-                {
-                    text: '거절',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            const token = await AsyncStorage.getItem('userToken');
-                            if (!token) {
-                                Alert.alert('오류', '로그인이 필요합니다.');
-                                return;
-                            }
-
-                            await declineFollowRequest(userId, token);
-                            Alert.alert('성공', '팔로우 요청을 거절했습니다.');
-                            // 목록 새로고침
-                            fetchFollowersList();
-                        } catch (error) {
-                            console.error('팔로우 요청 거절 실패:', error);
-                            Alert.alert('오류', '팔로우 요청 거절에 실패했습니다.');
-                        }
-                    }
-                }
-            ]
-        );
     };
 
     // 팔로우 끊기 처리
@@ -156,8 +85,15 @@ const Follower = forwardRef(({ onDataUpdate }, ref) => {
 
                             await defollowUser(userId, token);
                             Alert.alert('성공', '팔로우를 끊었습니다.');
+                            
                             // 목록 새로고침
-                            fetchFollowersList();
+                            await fetchFollowersList();
+                            
+                            // 부모 컴포넌트에 데이터 변경 알림
+                            if (onDataChange && typeof onDataChange === 'function') {
+                                console.log('✅ 팔로워 데이터 변경 알림 전송');
+                                onDataChange();
+                            }
                         } catch (error) {
                             console.error('팔로우 끊기 실패:', error);
                             Alert.alert('오류', '팔로우 끊기에 실패했습니다.');
@@ -182,77 +118,44 @@ const Follower = forwardRef(({ onDataUpdate }, ref) => {
     };
 
     const renderItem = ({ item }) => {
-        // 데이터 유효성 검사 개선
-        if (!item || typeof item !== 'object') {
-            console.log('유효하지 않은 팔로워 아이템 (타입 오류):', item);
-            return null;
-        }
-
-        // 필수 필드 확인 - id가 없으면 email을 식별자로 사용
-        const userId = item.id || item.user_id || item.email;
+        // API에서 받은 데이터를 그대로 사용
+        const userId = item.userId;
         const nickname = item.nickname;
-        const email = item.email;
         const status = item.status;
         const profileImageUrl = item.profileImageUrl;
-
-        if (!userId || !nickname) {
-            console.log('필수 필드가 누락된 팔로워 아이템:', item);
-            return null;
-        }
         
         return (
             <View style={styles.followerRow}>
-                                 <TouchableOpacity
-                     style={styles.profileCircle}
-                     onPress={() => navigation.navigate('OtherProfile', { userId: userId })}
-                 >
-                     {profileImageUrl ? (
-                         <Image 
-                             source={{ uri: profileImageUrl }} 
-                             style={styles.profileImage}
-                             resizeMode="cover"
-                         />
-                     ) : null}
-                 </TouchableOpacity>
+                <TouchableOpacity
+                    style={styles.profileCircle}
+                    onPress={() => navigation.navigate('OtherProfile', { userId: userId })}
+                >
+                    {profileImageUrl ? (
+                        <Image 
+                            source={{ uri: profileImageUrl }} 
+                            style={styles.profileImage}
+                            resizeMode="cover"
+                        />
+                    ) : null}
+                </TouchableOpacity>
                 
-                                 <View style={styles.userInfo}>
-                     <Text style={styles.username}>{nickname}</Text>
-                     {status && (
-                         <Text style={[styles.statusText, 
-                             status === 'approved' ? styles.approvedStatus : styles.pendingStatus
-                         ]}>
-                             {status === 'approved' ? '팔로워' : '승인 대기중'}
-                         </Text>
-                     )}
-                 </View>
-
-                <View style={styles.buttonContainer}>
-                    {status === 'approved' ? (
-                        // 승인된 팔로워: 팔로우 끊기 버튼
-                                                 <TouchableOpacity
-                             style={styles.defollowButton}
-                             onPress={() => handleDefollow(userId, nickname)}
-                         >
-                             <Text style={styles.defollowButtonText}>Remove</Text>
-                         </TouchableOpacity>
-                    ) : (
-                        // 승인 대기중: 승인/거절 버튼
-                        <>
-                                                         <TouchableOpacity
-                                 style={styles.acceptButton}
-                                 onPress={() => handleAccept(userId, nickname)}
-                             >
-                                 <Text style={styles.acceptButtonText}>Accept</Text>
-                             </TouchableOpacity>
-                             <TouchableOpacity
-                                 style={styles.declineButton}
-                                 onPress={() => handleDecline(userId, nickname)}
-                             >
-                                 <Text style={styles.declineButtonText}>Decline</Text>
-                             </TouchableOpacity>
-                        </>
+                <View style={styles.userInfo}>
+                    <Text style={styles.username}>{nickname}</Text>
+                    {status && (
+                        <Text style={[styles.statusText, 
+                            status === 'approved' ? styles.approvedStatus : styles.pendingStatus
+                        ]}>
+                            {status === 'approved' ? '팔로워' : '승인 대기중'}
+                        </Text>
                     )}
                 </View>
+
+                <TouchableOpacity
+                    style={styles.defollowButton}
+                    onPress={() => handleDefollow(userId, nickname)}
+                >
+                    <Text style={styles.defollowButtonText}>Remove</Text>
+                </TouchableOpacity>
             </View>
         );
     };
@@ -271,10 +174,10 @@ const Follower = forwardRef(({ onDataUpdate }, ref) => {
 
     return (
         <View style={styles.container}>
-                    <FlatList
+            <FlatList
                 data={followersData}
                 keyExtractor={(item, index) => {
-                    const userId = item?.id || item?.user_id || item?.email;
+                    const userId = item?.userId;
                     return userId ? userId.toString() : `follower-${index}`;
                 }}
                 renderItem={renderItem}
@@ -302,23 +205,23 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     listContainer: {
-        gap: 16,
-        paddingTop: 16,
+        gap: 12,
+        paddingTop: 12,
         paddingBottom: 100,
     },
-         followerRow: {
+    followerRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 16,
-        paddingHorizontal: 16,
+        paddingVertical: 12,
+        paddingHorizontal: 12,
         borderBottomWidth: 0.5,
         borderBottomColor: '#E5E5E5',
         backgroundColor: '#fff',
     },
     profileCircle: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         backgroundColor: '#F0F0F0',
         justifyContent: 'center',
         alignItems: 'center',
@@ -329,76 +232,25 @@ const styles = StyleSheet.create({
     profileImage: {
         width: '100%',
         height: '100%',
-        borderRadius: 24,
-    },
-    profileInitial: {
-        color: '#666',
-        fontSize: 18,
-        fontWeight: '600',
+        borderRadius: 20,
     },
     userInfo: {
         flex: 1,
-        marginLeft: 16,
+        marginLeft: 12,
         justifyContent: 'center',
     },
     username: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '600',
         color: '#262626',
-        marginBottom: 4,
-    },
-    email: {
-        fontSize: 13,
-        color: '#8E8E93',
         marginBottom: 2,
     },
-    buttonContainer: {
-        flexDirection: 'row',
-        gap: 8,
-        marginLeft: 8,
-    },
-    acceptButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: '#0095F6',
-        minWidth: 70,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
-    },
-    acceptButtonText: {
-        color: '#fff',
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    declineButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: '#8E8E93',
-        minWidth: 70,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
-    },
-    declineButtonText: {
-        color: '#fff',
-        fontSize: 13,
-        fontWeight: '600',
-    },
     defollowButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 14,
         backgroundColor: '#FF3B30',
-        minWidth: 60,
+        minWidth: 50,
         alignItems: 'center',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
@@ -408,7 +260,7 @@ const styles = StyleSheet.create({
     },
     defollowButtonText: {
         color: '#fff',
-        fontSize: 13,
+        fontSize: 11,
         fontWeight: '600',
     },
     loadingContainer: {
@@ -439,8 +291,8 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     statusText: {
-        fontSize: 12,
-        marginTop: 4,
+        fontSize: 11,
+        marginTop: 2,
     },
     approvedStatus: {
         color: '#0095F6',
