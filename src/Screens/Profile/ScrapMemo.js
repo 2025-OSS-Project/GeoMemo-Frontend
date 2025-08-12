@@ -1,67 +1,202 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getScrapMemos } from '../../config/api';
+import { AntDesign } from '@expo/vector-icons';
 
 export default function ScrapMemo() {
   const navigation = useNavigation();
+  const [scrapMemos, setScrapMemos] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const dummyData = []; // API에서 받아온 데이터로 교체 예정
+  // 스크랩 메모 목록 가져오기
+  const fetchScrapMemos = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // 저장된 토큰 가져오기
+      const userToken = await AsyncStorage.getItem('userToken');
+      if (!userToken) {
+        throw new Error('로그인이 필요합니다.');
+      }
+      
+      const result = await getScrapMemos(userToken);
+      
+      if (result.success && result.data) {
+        setScrapMemos(result.data);
+      } else {
+        setError('스크랩 메모 목록을 가져올 수 없습니다.');
+      }
+    } catch (error) {
+      setError(`스크랩 메모 목록 조회 실패: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const renderItem = ({ item }) => (
-    <View style={styles.memoRow}>
-      <TouchableOpacity
-        style={styles.circle}
-        onPress={() => navigation.navigate('OtherProfile')}
-      >
-        <Text style={styles.circleText}>{item}</Text>
-      </TouchableOpacity>
+  // 컴포넌트 마운트 시 스크랩 메모 목록 가져오기
+  useEffect(() => {
+    fetchScrapMemos();
+  }, []);
 
-      <TouchableOpacity 
-      style={styles.memoBox} 
-      onPress={() => navigation.navigate('MemoView')}>
-      </TouchableOpacity>
-    </View>
+  // 화면이 포커스될 때마다 스크랩 메모 목록 새로고침
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchScrapMemos();
+    }, [])
   );
 
+  // 메모 날짜 포맷팅
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>스크랩 메모 목록을 불러오는 중...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchScrapMemos}>
+          <AntDesign name="reload1" size={24} color="black" />
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
-    <FlatList
-      data={dummyData}
-      keyExtractor={(item) => item.toString()}
-      renderItem={renderItem}
-      contentContainerStyle={styles.container}
-    />
+    <View style={styles.container}>
+      {/* 스크랩 메모 목록만 스크롤 */}
+      <ScrollView contentContainerStyle={styles.memoList}>
+        {scrapMemos.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>스크랩한 메모가 없습니다</Text>
+          </View>
+        ) : (
+          scrapMemos.map((memo) => (
+            <TouchableOpacity
+              key={memo.memoId}
+              style={styles.memoItem}
+              onPress={() => navigation.navigate('MemoView', { memo })}
+            >
+              <Text style={styles.title}>
+                {memo.title || '제목 없음'}
+              </Text>
+              <View style={styles.timeLocationContainer}>
+                <Text style={styles.timeText}>
+                  {formatDate(memo.createdAt)}
+                </Text>
+                <Text style={styles.location} numberOfLines={1} ellipsizeMode="tail">
+                  {memo.location?.address || '위치 없음'}
+                </Text>
+              </View>
+              <Text style={styles.content} numberOfLines={2}>
+                {memo.content}
+              </Text>
+              <Text style={styles.publicStatus}>
+                {memo.isPublic ? '공개' : '비공개'}
+              </Text>
+            </TouchableOpacity>
+          ))
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    backgroundColor: '#fff',
+    flex: 1,
   },
-  memoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
+  memoList: {
+    gap: 10,
+    paddingBottom: 20,
   },
-  circle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#333',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
+  memoItem: {
+    backgroundColor: '#eee',
+    padding: 15,
+    borderRadius: 8,
+    marginHorizontal: 10,
+    marginVertical: 5,
   },
-  circleText: {
-    color: '#fff',
+  title: {
     fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  timeLocationContainer: {
+    marginBottom: 4,
+  },
+  timeText: {
+    fontSize: 11,
+    color: '#999',
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  location: {
+    fontSize: 12,
+    color: '#888',
+  },
+  content: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 4,
+  },
+  publicStatus: {
+    fontSize: 10,
+    color: '#007AFF',
     fontWeight: 'bold',
   },
-  memoBox: {
+  loadingContainer: {
     flex: 1,
-    height: 50,
-    backgroundColor: '#eee',
-    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    padding: 10,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyText: {
+    fontSize: 18,
+    color: '#666',
   },
 });

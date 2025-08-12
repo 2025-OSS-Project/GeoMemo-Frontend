@@ -9,7 +9,7 @@ export default function Follower() {
 
     const renderItem = ({ item }) => (
         <View style={styles.followerRow}>
-            <TouchableOpacity style={styles.profileCircle} onPress={() => navigation.navigate('OtherProfile')}>
+            <TouchableOpacity style={styles.profileCircle} onPress={() => navigation.navigate('OtherProfile', { userId: item.id })}>
                 <Text style={styles.profileInitial}>0</Text>
             </TouchableOpacity>
             <Text style={styles.nickname}>{item.nickname}</Text>
