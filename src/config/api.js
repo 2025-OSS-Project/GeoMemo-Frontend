@@ -1504,3 +1504,105 @@ export const getScrapMemos = async (userToken) => {
     throw error;
   }
 };
+
+// 특정 사용자의 메모 조회 함수 (API 명세서에 맞춤)
+export const getUserMemos = async (userId, userToken = null) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    
+    // 토큰이 있을 때만 Authorization 헤더 추가
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+      console.log('사용자 메모 조회에 토큰 사용:', userToken.substring(0, 20) + '...');
+    } else {
+      console.warn('사용자 메모 조회에 토큰이 없음');
+    }
+
+    const url = `${config.memosEndpoint}${userId}`;
+    console.log('=== 사용자 메모 조회 요청 상세 ===');
+    console.log('전달받은 userId:', userId);
+    console.log('userId 타입:', typeof userId);
+    console.log('userId 값 검증:', userId ? '유효함' : '유효하지 않음');
+    console.log('최종 URL:', url);
+    console.log('사용자 메모 조회 요청:', { url, userId, hasToken: !!userToken });
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+    });
+
+    console.log('HTTP 응답 상태:', response.status);
+    console.log('HTTP 응답 헤더:', Object.fromEntries(response.headers.entries()));
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('사용자 메모 조회 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 사용자 메모 조회 성공 - 원본 응답:', result);
+    console.log('응답 키들:', Object.keys(result));
+    
+    // API 명세서에 따라 응답이 배열 형태로 직접 반환되어야 함
+    // 응답 구조에 따라 적절한 형태로 반환
+    if (Array.isArray(result)) {
+      // 응답이 직접 배열인 경우
+      console.log('응답이 직접 배열 형태:', result.length);
+      return result;
+    } else if (result.data && Array.isArray(result.data)) {
+      // 응답이 { data: [...] } 형태인 경우
+      console.log('응답이 data 필드를 가진 객체 형태:', result.data.length);
+      return result.data;
+    } else if (result && typeof result === 'object') {
+      // 다른 형태의 응답 구조인 경우, 가능한 메모 데이터를 찾아서 반환
+      console.warn('예상치 못한 응답 구조, 가능한 메모 데이터를 찾아서 반환:', result);
+      
+      // result.data가 단일 메모 객체인 경우 (단일 메모)
+      if (result.data && result.data.memoId && !Array.isArray(result.data)) {
+        console.log('result.data가 단일 메모 객체:', result.data);
+        return [result.data];
+      }
+      
+      // result 자체가 메모 객체인 경우 (단일 메모)
+      if (result.memoId || result.title) {
+        return [result];
+      }
+      
+      // result 내부에 메모 배열이 있는 경우
+      const possibleMemoArrays = Object.values(result).filter(val => Array.isArray(val) && val.length > 0 && val[0] && (val[0].memoId || val[0].title));
+      if (possibleMemoArrays.length > 0) {
+        return possibleMemoArrays[0];
+      }
+      
+      // 메모 데이터를 찾을 수 없는 경우
+      console.error('응답에서 메모 데이터를 찾을 수 없음:', result);
+      return [];
+    } else {
+      console.error('응답을 파싱할 수 없음:', result);
+      return [];
+    }
+  } catch (error) {
+    console.error('❌ 사용자 메모 조회 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.memosEndpoint}${userId}`);
+    throw error;
+  }
+};

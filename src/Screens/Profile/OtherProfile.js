@@ -18,12 +18,25 @@ export default function OtherProfile() {
 
   // 라우트에서 전달받은 사용자 ID
   const otherUserId = route.params?.userId;
+  
+  console.log('=== OtherProfile 컴포넌트 ===');
+  console.log('route.params:', route.params);
+  console.log('route.params?.userId:', route.params?.userId);
+  console.log('otherUserId:', otherUserId);
+  console.log('otherUserId 타입:', typeof otherUserId);
+  console.log('otherUserId 값 검증:', otherUserId ? '유효함' : '유효하지 않음');
 
   // 컴포넌트 마운트 시 다른 사용자 정보 조회
   useEffect(() => {
+    console.log('=== OtherProfile useEffect 실행 ===');
+    console.log('otherUserId in useEffect:', otherUserId);
+    console.log('otherUserId 타입 in useEffect:', typeof otherUserId);
+    
     if (otherUserId) {
+      console.log('✅ otherUserId가 유효함, 사용자 정보 로드 시작');
       loadOtherUserInfo();
     } else {
+      console.error('❌ otherUserId가 유효하지 않음');
       setIsLoading(false);
       Alert.alert('오류', '사용자 ID가 필요합니다.');
       navigation.goBack();
@@ -144,7 +157,24 @@ export default function OtherProfile() {
 
       {/* 콘텐츠 영역 */}
       <View style={styles.contentArea}>
-        {activeTab === 'memo' ? <OtherMemoList userId={otherUserId} /> : <Insight />}
+        {activeTab === 'memo' ? (
+          userInfo?.user_id ? (
+            <>
+              {console.log('=== OtherMemoList 렌더링 ===')}
+              {console.log('otherUserId for OtherMemoList:', otherUserId)}
+              {console.log('userInfo.user_id for OtherMemoList:', userInfo?.user_id)}
+              {console.log('userInfo.user_id 타입 for OtherMemoList:', typeof userInfo?.user_id)}
+              <OtherMemoList userId={userInfo.user_id} />
+            </>
+          ) : (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#007AFF" />
+              <Text style={styles.loadingText}>사용자 정보를 불러오는 중...</Text>
+            </View>
+          )
+        ) : (
+          <Insight />
+        )}
       </View>
       
       {/* 홈 버튼 */}
