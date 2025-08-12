@@ -554,23 +554,63 @@ export const signIn = async (credentials) => {
     console.log('로그인 응답 헤더:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
-      let errorMessage = `HTTP error! status: ${response.status}`;
+      let errorData = null;
       
       try {
-        const errorData = await response.json();
+        errorData = await response.json();
         console.error('로그인 에러 응답:', errorData);
-        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
       } catch (parseError) {
         // JSON 파싱 실패 시 텍스트로 읽기 시도
         try {
           const errorText = await response.text();
           console.error('로그인 에러 텍스트:', errorText);
-          errorMessage = `Server response: ${errorText}`;
+          errorData = { detail: errorText };
         } catch (textError) {
-          errorMessage = `HTTP error! status: ${response.status}`;
+          errorData = { detail: `HTTP error! status: ${response.status}` };
         }
       }
+
+      // 401 응답에 대한 세부적인 에러 처리
+      if (response.status === 401) {
+        const detail = errorData?.detail || '';
+        
+        // 이메일 인증이 필요한 경우
+        if (detail.includes('이메일 인증') || detail.includes('email verification') || detail.includes('verification')) {
+          const error = new Error('EMAIL_VERIFICATION_REQUIRED');
+          error.status = 401;
+          error.detail = detail;
+          error.type = 'EMAIL_VERIFICATION';
+          throw error;
+        }
+        
+        // 잘못된 자격증명 (이메일/비밀번호 오류)
+        if (detail.includes('invalid credentials') || detail.includes('Invalid credentials') || detail.includes('잘못된')) {
+          const error = new Error('INVALID_CREDENTIALS');
+          error.status = 401;
+          error.detail = detail;
+          error.type = 'INVALID_CREDENTIALS';
+          throw error;
+        }
+        
+        // 기타 401 에러
+        const error = new Error('UNAUTHORIZED');
+        error.status = 401;
+        error.detail = detail;
+        error.type = 'UNAUTHORIZED';
+        throw error;
+      }
       
+      // 403 응답 (가입 필요)
+      if (response.status === 403) {
+        const error = new Error('REGISTRATION_REQUIRED');
+        error.status = 403;
+        error.detail = errorData?.detail || '가입이 필요합니다';
+        error.type = 'REGISTRATION_REQUIRED';
+        throw error;
+      }
+      
+      // 기타 에러
+      const errorMessage = errorData?.detail || errorData?.error || errorData?.message || `HTTP error! status: ${response.status}`;
       throw new Error(errorMessage);
     }
 
