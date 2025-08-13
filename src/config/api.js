@@ -1747,3 +1747,518 @@ export const getUserMemos = async (userId, userToken = null) => {
     throw error;
   }
 };
+
+// 팔로잉 목록 조회 함수
+export const getFollowingList = async (userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/user/follows`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('팔로잉 목록 조회 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 팔로잉 목록 조회 성공:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ 팔로잉 목록 조회 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/follows`);
+    throw error;
+  }
+};
+
+// 언팔로우 함수
+export const unfollowUser = async (userId, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    // 이미지에 표시된 API 경로에 맞춤: /api/user/unfollow/{user_id}
+    const response = await fetch(`${config.baseURL}/user/unfollow/${userId}`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('언팔로우 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 언팔로우 성공:', userId);
+    
+    // 이미지의 API 명세에 따른 응답 구조 처리
+    // { "success": true|false, "error": null|"Error Message" }
+    if (result && typeof result === 'object') {
+      if (result.success === true) {
+        console.log('✅ 언팔로우 API 성공 응답:', result);
+        return result;
+      } else if (result.success === false) {
+        // API에서 명시적으로 실패를 반환한 경우
+        const errorMsg = result.error || '언팔로우에 실패했습니다.';
+        throw new Error(errorMsg);
+      } else {
+        // success 필드가 없는 경우, 기존 응답 그대로 반환
+        console.log('⚠️ success 필드가 없는 응답, 기존 형태로 반환:', result);
+        return result;
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('❌ 언팔로우 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/unfollow/${userId}`);
+    throw error;
+  }
+};
+
+// 팔로워 목록 조회 함수
+export const getFollowersList = async (userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/user/followers`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('팔로워 목록 조회 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 팔로워 목록 조회 성공:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ 팔로워 목록 조회 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/followers`);
+    throw error;
+  }
+};
+
+// 팔로우 요청 승인 함수
+export const acceptFollowRequest = async (userId, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/user/accept/${userId}`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('팔로우 요청 승인 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 팔로우 요청 승인 성공:', userId);
+    return result;
+  } catch (error) {
+    console.error('❌ 팔로우 요청 승인 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/accept/${userId}`);
+    throw error;
+  }
+};
+
+// 팔로우 요청 거절 함수
+export const declineFollowRequest = async (userId, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/user/decline/${userId}`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('팔로우 요청 거절 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 팔로우 요청 거절 성공:', userId);
+    return result;
+  } catch (error) {
+    console.error('❌ 팔로우 요청 거절 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/decline/${userId}`);
+    throw error;
+  }
+};
+
+// 팔로우 끊기 함수
+export const defollowUser = async (userId, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/user/defollow/${userId}`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('팔로우 끊기 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 팔로우 끊기 성공:', userId);
+    return result;
+  } catch (error) {
+    console.error('❌ 팔로우 끊기 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/defollow/${userId}`);
+    throw error;
+  }
+};
+
+// 팔로우 요청
+export const followUser = async (userId, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/user/follow/${userId}`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('팔로우 요청 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 팔로우 요청 성공:', userId);
+    return result;
+  } catch (error) {
+    console.error('❌ 팔로우 요청 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/follow/${userId}`);
+    throw error;
+  }
+};
+
+// 팔로잉 수 조회 함수
+export const getFollowingCount = async (userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/user/follows`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('팔로잉 수 조회 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    
+    // 응답에서 팔로잉 수 추출
+    let followingCount = 0;
+    if (result && result.data && Array.isArray(result.data.users)) {
+      followingCount = result.data.users.length;
+    } else if (result && Array.isArray(result)) {
+      followingCount = result.length;
+    } else if (result && result.count !== undefined) {
+      followingCount = result.count;
+    }
+    
+    console.log('✅ 팔로잉 수 조회 성공:', followingCount);
+    return followingCount;
+  } catch (error) {
+    console.error('❌ 팔로잉 수 조회 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/follows`);
+    throw error;
+  }
+};
+
+// 팔로워 수 조회 함수
+export const getFollowersCount = async (userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/user/followers`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('팔로워 수 조회 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    
+    // 응답에서 팔로워 수 추출
+    let followersCount = 0;
+    if (result && result.data && Array.isArray(result.data.users)) {
+      followersCount = result.data.users.length;
+    } else if (result && Array.isArray(result)) {
+      followersCount = result.length;
+    } else if (result && result.count !== undefined) {
+      followersCount = result.count;
+    }
+    
+    console.log('✅ 팔로워 수 조회 성공:', followersCount);
+    return followersCount;
+  } catch (error) {
+    console.error('❌ 팔로워 수 조회 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/followers`);
+    throw error;
+  }
+};
+
+// 특정 사용자의 팔로잉/팔로워 수를 한 번에 조회하는 함수
+export const getUserFollowCounts = async (userId, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    // 팔로잉과 팔로워 수를 병렬로 조회
+    const [followingResponse, followersResponse] = await Promise.all([
+      fetch(`${config.baseURL}/user/follows`, {
+        method: 'GET',
+        headers,
+      }),
+      fetch(`${config.baseURL}/user/followers`, {
+        method: 'GET',
+        headers,
+      })
+    ]);
+
+    // 팔로잉 수 처리
+    let followingCount = 0;
+    if (followingResponse.ok) {
+      try {
+        const followingResult = await followingResponse.json();
+        if (followingResult && followingResult.data && Array.isArray(followingResult.data.users)) {
+          followingCount = followingResult.data.users.length;
+        } else if (followingResult && Array.isArray(followingResult)) {
+          followingCount = followingResult.length;
+        } else if (followingResult && followingResult.count !== undefined) {
+          followingCount = followingResult.count;
+        }
+      } catch (parseError) {
+        console.warn('팔로잉 응답 파싱 실패:', parseError);
+      }
+    }
+
+    // 팔로워 수 처리
+    let followersCount = 0;
+    if (followersResponse.ok) {
+      try {
+        const followersResult = await followersResponse.json();
+        if (followersResult && followersResult.data && Array.isArray(followersResult.data.users)) {
+          followersCount = followersResult.data.users.length;
+        } else if (followersResult && Array.isArray(followersResult)) {
+          followersCount = followersResult.length;
+        } else if (followersResult && followersResult.count !== undefined) {
+          followersCount = followersResult.count;
+        }
+      } catch (parseError) {
+        console.warn('팔로워 응답 파싱 실패:', parseError);
+      }
+    }
+
+    console.log('✅ 사용자 팔로우 수 조회 성공:', { userId, followingCount, followersCount });
+    return {
+      following_count: followingCount,
+      follower_count: followersCount
+    };
+  } catch (error) {
+    console.error('❌ 사용자 팔로우 수 조회 실패:', error.message);
+    throw error;
+  }
+};
+
+

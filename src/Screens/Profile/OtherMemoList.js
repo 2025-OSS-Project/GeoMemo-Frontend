@@ -301,9 +301,7 @@ export default function OtherMemoList({ userId }) {
                                 {memo.title || '제목 없음'}
                             </Text>
                             
-                            <Text style={styles.content} numberOfLines={1} ellipsizeMode="tail">
-                                {memo.content}
-                            </Text>
+
                             
 
                             
