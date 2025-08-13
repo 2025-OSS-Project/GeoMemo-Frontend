@@ -4,13 +4,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { uploadImageToS3, validateImage } from '../../utils/s3Upload';
-import { saveProfileImage } from '../../config/api';
+import axios from 'axios';
+import { generatePresignedUrl, updateProfileImage } from '../../config/api';
 
 export default function EditProfile() {
   const navigation = useNavigation();
   const [selectedImage, setSelectedImage] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [status, setStatus] = useState('');
 
   // 권한 요청 함수
   const requestPermissions = async () => {
@@ -83,22 +85,7 @@ export default function EditProfile() {
     }
   };
 
-  // 사용자 ID 가져오기 (실제로는 AsyncStorage나 Context에서 가져와야 함)
-  const getUserId = async () => {
-    try {
-      const userToken = await AsyncStorage.getItem('userToken');
-      if (!userToken) {
-        throw new Error('로그인이 필요합니다.');
-      }
-      // 실제로는 토큰을 디코딩하거나 API를 통해 사용자 ID를 가져와야 합니다
-      // 임시로 토큰을 사용자 ID로 사용
-      return userToken.substring(0, 10); // 임시 사용자 ID
-    } catch (error) {
-      throw new Error('사용자 정보를 가져올 수 없습니다.');
-    }
-  };
-
-  // 프로필 저장 함수 (S3 업로드 + API 호출)
+  // 프로필 저장 함수 (Presigned URL 방식 + axios)
   const handleSaveProfile = async () => {
     if (!selectedImage) {
       Alert.alert('알림', '변경할 프로필 사진을 선택해주세요.');
@@ -108,10 +95,7 @@ export default function EditProfile() {
     setIsUploading(true);
 
     try {
-      // 1. 이미지 검증
-      await validateImage(selectedImage);
-      
-      // 2. 사용자 토큰과 ID 가져오기
+      // 1. 사용자 토큰 가져오기
       const userToken = await AsyncStorage.getItem('userToken');
       if (!userToken) {
         Alert.alert('오류', '로그인이 필요합니다.');
@@ -119,30 +103,56 @@ export default function EditProfile() {
         return;
       }
       
-      const userId = await getUserId();
+      // 2. 파일명과 타입 설정
+      const fileExtension = selectedImage.split('.').pop();
+      const fileName = `profile_${Date.now()}.${fileExtension}`;
+      const fileType = `image/${fileExtension}`;
+
+      // 3. Presigned URL 생성
+      console.log('Presigned URL 생성 시작...');
+      const presignedUrl = await generatePresignedUrl(fileName, fileType, userToken);
       
-      // 3. S3에 이미지 직접 업로드
+      // 4. 이미지를 base64로 변환 (React Native 호환)
+      const response = await fetch(selectedImage);
+      const arrayBuffer = await response.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      
+      // 5. axios를 사용하여 S3에 직접 업로드
       console.log('S3 업로드 시작...');
-      const imageUrl = await uploadImageToS3(selectedImage, userId);
+      setStatus('파일 업로드 중...');
       
-      // 4. 백엔드에 이미지 URL 저장 (API 명세서에 맞춤)
+      await axios.put(presignedUrl, base64, {
+        headers: {
+          'Content-Type': fileType,
+        },
+        onUploadProgress: (progressEvent) => {
+          const percent = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          setProgress(percent);
+        },
+      });
+
+      setStatus('업로드 완료');
+      setProgress(100);
+
+      // 6. 업로드된 이미지 URL 생성 (presigned URL에서 쿼리 파라미터 제거)
+      const imageUrl = presignedUrl.split('?')[0];
+      
+      // 7. 백엔드에 이미지 URL 저장
       console.log('백엔드에 URL 저장 시작...');
-      const result = await saveProfileImage(imageUrl, userToken);
+      await updateProfileImage(imageUrl, userToken);
       
-      if (result.success) {
-        Alert.alert(
-          '성공',
-          '프로필 사진이 성공적으로 변경되었습니다!',
-          [
-            {
-              text: '확인',
-              onPress: () => navigation.goBack()
-            }
-          ]
-        );
-      } else {
-        throw new Error('프로필 이미지 저장에 실패했습니다.');
-      }
+      Alert.alert(
+        '성공',
+        '프로필 사진이 성공적으로 변경되었습니다!',
+        [
+          {
+            text: '확인',
+            onPress: () => navigation.goBack()
+          }
+        ]
+      );
       
     } catch (error) {
       console.error('프로필 사진 업로드 실패:', error);
@@ -182,6 +192,17 @@ export default function EditProfile() {
       <TouchableOpacity style={styles.optionBox} onPress={() => navigation.navigate('ChangePassword')}>
         <Text style={styles.optionText}>비밀번호 변경</Text>
       </TouchableOpacity>
+
+      {/* 업로드 진행률 표시 */}
+      {isUploading && (
+        <View style={styles.progressContainer}>
+          <Text style={styles.statusText}>{status}</Text>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: `${progress}%` }]} />
+          </View>
+          <Text style={styles.progressText}>{progress}%</Text>
+        </View>
+      )}
 
       {/* 저장 버튼 */}
       <TouchableOpacity 
@@ -265,5 +286,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: '#000',
+  },
+  progressContainer: {
+    marginTop: 20,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 10,
+  },
+  progressBar: {
+    width: '100%',
+    height: 8,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#6EE58F',
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 5,
   },
 });

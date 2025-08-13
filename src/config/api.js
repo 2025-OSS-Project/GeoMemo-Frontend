@@ -1,4 +1,6 @@
 // API 설정 파일
+import axios from 'axios';
+
 export const API_CONFIG = {
   // 개발 환경 (새로운 백엔드 서버)
   development: {
@@ -2257,6 +2259,53 @@ export const getUserFollowCounts = async (userId, userToken) => {
     };
   } catch (error) {
     console.error('❌ 사용자 팔로우 수 조회 실패:', error.message);
+    throw error;
+  }
+};
+
+// 프로필 이미지 업로드를 위한 presigned URL 생성 함수
+export const generatePresignedUrl = async (fileName, fileType, userToken) => {
+  try {
+    const headers = {
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const url = `https://dco69dhctdpt.cloudfront.net/generate-presigned-url?file_name=${encodeURIComponent(fileName)}&file_type=${encodeURIComponent(fileType)}`;
+    
+    console.log('🔗 Presigned URL 요청 URL:', url);
+    console.log('📁 파일명:', fileName);
+    console.log('📋 파일 타입:', fileType);
+
+    const response = await axios.get(url, { headers });
+
+    const presignedUrl = response.data;
+    if (!presignedUrl) throw new Error('presigned URL을 받지 못했습니다.');
+
+    console.log('✅ Presigned URL 생성 성공:', presignedUrl);
+    return presignedUrl;
+  } catch (error) {
+    console.error('❌ Presigned URL 생성 실패:', error.message);
+    throw error;
+  }
+};
+
+// 프로필 이미지 업데이트 함수
+export const updateProfileImage = async (profileImageUrl, userToken) => {
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await axios.post('https://dco69dhctdpt.cloudfront.net/api/user/profile-image', {
+      profile_image_url: profileImageUrl
+    }, { headers });
+
+    const result = response.data;
+    console.log('✅ 프로필 이미지 업데이트 성공:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ 프로필 이미지 업데이트 실패:', error.message);
     throw error;
   }
 };

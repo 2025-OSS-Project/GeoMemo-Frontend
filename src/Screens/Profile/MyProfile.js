@@ -54,7 +54,7 @@ export default function MyProfile() {
       // 팔로우 수도 별도로 새로고침
       refreshFollowCounts();
       
-      // FollowRequest에서 돌아왔을 때 추가로 팔로우 수 새로고침
+      // FollowRequest에서 돌아올 때 추가로 팔로우 수 새로고침
       if (route.params?.refreshData) {
         console.log('FollowRequest에서 돌아옴, 팔로우 수 추가 새로고침');
         refreshFollowCounts();
