@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, SafeAreaView, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { signUp } from '../../config/api';
+import { signUp, sendEmailVerification } from '../../config/api';
 
 export default function SignUp() {
   const navigation = useNavigation();
@@ -47,8 +47,37 @@ export default function SignUp() {
       const result = await signUp(userData);
       
       if (result.success) {
-        // 회원가입 성공 시 바로 이메일 인증 화면으로 이동
-        navigation.navigate('EmailVerification', { email: email.trim() });
+        // 회원가입 성공 시 이메일 인증 코드 발송
+        try {
+          await sendEmailVerification(email.trim());
+          Alert.alert(
+            '인증 코드 발송 완료', 
+            '입력하신 이메일로 인증 코드가 발송되었습니다. 이메일을 확인해주세요.',
+            [
+              {
+                text: '확인',
+                onPress: () => {
+                  // 이메일 인증 화면으로 이동
+                  navigation.navigate('EmailVerification', { email: email.trim() });
+                }
+              }
+            ]
+          );
+        } catch (error) {
+          Alert.alert(
+            '인증 코드 발송 실패', 
+            '이메일 인증 코드 발송에 실패했습니다. 다시 시도해주세요.',
+            [
+              {
+                text: '확인',
+                onPress: () => {
+                  // 이메일 인증 화면으로 이동 (수동으로 코드 입력 가능)
+                  navigation.navigate('EmailVerification', { email: email.trim() });
+                }
+              }
+            ]
+          );
+        }
       } else {
         Alert.alert('오류', '회원가입에 실패했습니다.');
       }

@@ -290,10 +290,16 @@ export const getMemoById = async (memoId, userToken = null) => {
       console.warn('메모 상세 조회에 토큰이 없음');
     }
 
-    const response = await fetch(`${config.memosEndpoint}${memoId}`, {
+    const url = `${config.memosEndpoint}${memoId}`;
+    console.log('메모 상세 조회 API 호출:', { url, memoId, hasToken: !!userToken });
+
+    const response = await fetch(url, {
       method: 'GET',
       headers,
     });
+
+    console.log('메모 상세 조회 HTTP 응답 상태:', response.status);
+    console.log('메모 상세 조회 HTTP 응답 헤더:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       let errorMessage = `HTTP error! status: ${response.status}`;
@@ -306,6 +312,7 @@ export const getMemoById = async (memoId, userToken = null) => {
         // JSON 파싱 실패 시 텍스트로 읽기
         try {
           const errorText = await response.text();
+          console.error('메모 상세 조회 에러 텍스트:', errorText);
           errorMessage = `Server response: ${errorText}`;
         } catch (textError) {
           errorMessage = `HTTP error! status: ${response.status}`;
@@ -316,8 +323,29 @@ export const getMemoById = async (memoId, userToken = null) => {
     }
 
     const result = await response.json();
-    console.log('✅ 메모 상세 조회 성공:', memoId);
-    return result;
+    console.log('✅ 메모 상세 조회 성공 - 원본 응답:', result);
+    console.log('응답 타입:', typeof result);
+    console.log('응답 키들:', Object.keys(result || {}));
+    
+    // API 응답 구조 분석
+    if (result && typeof result === 'object') {
+      if (result.memoId || result.title || result.content) {
+        console.log('✅ 응답이 직접 메모 객체 형태');
+        return result;
+      } else if (result.data && (result.data.memoId || result.data.title || result.data.content)) {
+        console.log('✅ 응답이 { data: {...} } 형태');
+        return result;
+      } else if (result.success && result.data && (result.data.memoId || result.data.title || result.data.content)) {
+        console.log('✅ 응답이 { success: true, data: {...} } 형태');
+        return result;
+      } else {
+        console.warn('⚠️ 예상치 못한 응답 구조, 원본 반환:', result);
+        return result;
+      }
+    } else {
+      console.warn('⚠️ 응답이 객체가 아님, 원본 반환:', result);
+      return result;
+    }
   } catch (error) {
     console.error('❌ 메모 상세 조회 실패:', error.message);
     console.error('API 엔드포인트:', `${config.memosEndpoint}${memoId}`);
@@ -526,23 +554,63 @@ export const signIn = async (credentials) => {
     console.log('로그인 응답 헤더:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
-      let errorMessage = `HTTP error! status: ${response.status}`;
+      let errorData = null;
       
       try {
-        const errorData = await response.json();
+        errorData = await response.json();
         console.error('로그인 에러 응답:', errorData);
-        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
       } catch (parseError) {
         // JSON 파싱 실패 시 텍스트로 읽기 시도
         try {
           const errorText = await response.text();
           console.error('로그인 에러 텍스트:', errorText);
-          errorMessage = `Server response: ${errorText}`;
+          errorData = { detail: errorText };
         } catch (textError) {
-          errorMessage = `HTTP error! status: ${response.status}`;
+          errorData = { detail: `HTTP error! status: ${response.status}` };
         }
       }
+
+      // 401 응답에 대한 세부적인 에러 처리
+      if (response.status === 401) {
+        const detail = errorData?.detail || '';
+        
+        // 이메일 인증이 필요한 경우
+        if (detail.includes('이메일 인증') || detail.includes('email verification') || detail.includes('verification')) {
+          const error = new Error('EMAIL_VERIFICATION_REQUIRED');
+          error.status = 401;
+          error.detail = detail;
+          error.type = 'EMAIL_VERIFICATION';
+          throw error;
+        }
+        
+        // 잘못된 자격증명 (이메일/비밀번호 오류)
+        if (detail.includes('invalid credentials') || detail.includes('Invalid credentials') || detail.includes('잘못된')) {
+          const error = new Error('INVALID_CREDENTIALS');
+          error.status = 401;
+          error.detail = detail;
+          error.type = 'INVALID_CREDENTIALS';
+          throw error;
+        }
+        
+        // 기타 401 에러
+        const error = new Error('UNAUTHORIZED');
+        error.status = 401;
+        error.detail = detail;
+        error.type = 'UNAUTHORIZED';
+        throw error;
+      }
       
+      // 403 응답 (가입 필요)
+      if (response.status === 403) {
+        const error = new Error('REGISTRATION_REQUIRED');
+        error.status = 403;
+        error.detail = errorData?.detail || '가입이 필요합니다';
+        error.type = 'REGISTRATION_REQUIRED';
+        throw error;
+      }
+      
+      // 기타 에러
+      const errorMessage = errorData?.detail || errorData?.error || errorData?.message || `HTTP error! status: ${response.status}`;
       throw new Error(errorMessage);
     }
 
@@ -1038,6 +1106,54 @@ export const getUserInfo = async (userToken = null) => {
   }
 };
 
+// 사용자 정보 조회 함수 (API 명세서에 맞춤)
+export const getUserInfoById = async (userId, userToken = null) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+    }
+
+    const response = await fetch(`${config.baseURL}/user/${userId}`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('사용자 정보 조회 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 사용자 정보 조회 성공:', userId);
+    return result;
+  } catch (error) {
+    console.error('❌ 사용자 정보 조회 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/${userId}`);
+    throw error;
+  }
+};
+
 // 토큰 유효성 검증 함수
 export const validateToken = async (token) => {
   if (!token) {
@@ -1246,8 +1362,94 @@ export const checkEmailVerification = async (email, code) => {
   }
 };
 
+// 이메일 인증 코드 발송 함수
+export const sendEmailVerification = async (email) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+
+    const response = await fetch(`${config.baseURL}/auth/send-mail?email=${encodeURIComponent(email)}`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        if (response.status === 422 && errorData.detail) {
+          errorMessage = errorData.detail.map(err => err.msg || err.message).join(', ');
+        } else {
+          errorMessage = errorData.detail || errorData.error || errorMessage;
+        }
+      } catch (parseError) {
+        errorMessage = `Server response error`;
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 이메일 인증 코드 발송 성공:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ 이메일 인증 코드 발송 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/auth/send-mail`);
+    throw error;
+  }
+};
+
 // 이메일 인증 코드 재발송 함수
 
+
+// 스크랩 상태 확인 함수
+export const checkIsScraped = async (memoId, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/memo/check-is-scraped/${memoId}`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('스크랩 상태 확인 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 스크랩 상태 확인 성공:', memoId, result);
+    return result;
+  } catch (error) {
+    console.error('❌ 스크랩 상태 확인 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/memo/check-is-scraped/${memoId}`);
+    throw error;
+  }
+};
 
 // 스크랩 메모 함수
 export const scrapMemo = async (memoId, userToken) => {
@@ -1284,7 +1486,21 @@ export const scrapMemo = async (memoId, userToken) => {
       throw new Error(errorMessage);
     }
 
-    const result = await response.json();
+    // API 응답이 문자열일 수 있으므로 먼저 텍스트로 읽기
+    const responseText = await response.text();
+    console.log('스크랩 API 응답 텍스트:', responseText);
+    
+    let result;
+    try {
+      // JSON으로 파싱 시도
+      result = JSON.parse(responseText);
+      console.log('스크랩 API 응답 JSON:', result);
+    } catch (parseError) {
+      // JSON 파싱 실패 시 문자열 그대로 사용
+      result = responseText;
+      console.log('스크랩 API 응답 문자열:', result);
+    }
+    
     console.log('✅ 메모 스크랩 성공:', memoId);
     return result;
   } catch (error) {
@@ -1329,7 +1545,21 @@ export const unscrapMemo = async (memoId, userToken) => {
       throw new Error(errorMessage);
     }
 
-    const result = await response.json();
+    // API 응답이 문자열일 수 있으므로 먼저 텍스트로 읽기
+    const responseText = await response.text();
+    console.log('언스크랩 API 응답 텍스트:', responseText);
+    
+    let result;
+    try {
+      // JSON으로 파싱 시도
+      result = JSON.parse(responseText);
+      console.log('언스크랩 API 응답 JSON:', result);
+    } catch (parseError) {
+      // JSON 파싱 실패 시 문자열 그대로 사용
+      result = responseText;
+      console.log('언스크랩 API 응답 문자열:', result);
+    }
+    
     console.log('✅ 메모 언스크랩 성공:', memoId);
     return result;
   } catch (error) {
@@ -1338,3 +1568,697 @@ export const unscrapMemo = async (memoId, userToken) => {
     throw error;
   }
 }; 
+
+export const getCurrentUserInfo = async (userToken) => {
+  const config = getApiConfig();
+  try {
+    const response = await fetch(`${config.baseURL}/auth/me`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userToken}`,
+      },
+    });
+    
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        console.error('현재 사용자 정보 조회 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+    
+    const result = await response.json();
+    console.log('✅ 현재 사용자 정보 조회 성공:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ 현재 사용자 정보 조회 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/auth/me`);
+    throw error;
+  }
+};
+
+// 스크랩한 메모 목록 가져오기
+export const getScrapMemos = async (userToken) => {
+  const config = getApiConfig();
+  try {
+    const response = await fetch(`${config.baseURL}/memo/scrap`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userToken}`,
+      },
+    });
+    
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        console.error('스크랩 메모 조회 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+    
+    const result = await response.json();
+    console.log('✅ 스크랩 메모 조회 성공:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ 스크랩 메모 조회 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/memo/scrap`);
+    throw error;
+  }
+};
+
+// 특정 사용자의 메모 조회 함수 (API 명세서에 맞춤)
+export const getUserMemos = async (userId, userToken = null) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    
+    // 토큰이 있을 때만 Authorization 헤더 추가
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+      console.log('사용자 메모 조회에 토큰 사용:', userToken.substring(0, 20) + '...');
+    } else {
+      console.warn('사용자 메모 조회에 토큰이 없음');
+    }
+
+    const url = `${config.memosEndpoint}${userId}`;
+    console.log('=== 사용자 메모 조회 요청 상세 ===');
+    console.log('전달받은 userId:', userId);
+    console.log('userId 타입:', typeof userId);
+    console.log('userId 값 검증:', userId ? '유효함' : '유효하지 않음');
+    console.log('최종 URL:', url);
+    console.log('사용자 메모 조회 요청:', { url, userId, hasToken: !!userToken });
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+    });
+
+    console.log('HTTP 응답 상태:', response.status);
+    console.log('HTTP 응답 헤더:', Object.fromEntries(response.headers.entries()));
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('사용자 메모 조회 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 사용자 메모 조회 성공 - 원본 응답:', result);
+    console.log('응답 키들:', Object.keys(result));
+    
+    // API 명세서에 따라 응답이 배열 형태로 직접 반환되어야 함
+    // 응답 구조에 따라 적절한 형태로 반환
+    if (Array.isArray(result)) {
+      // 응답이 직접 배열인 경우
+      console.log('응답이 직접 배열 형태:', result.length);
+      return result;
+    } else if (result.data && Array.isArray(result.data)) {
+      // 응답이 { data: [...] } 형태인 경우
+      console.log('응답이 data 필드를 가진 객체 형태:', result.data.length);
+      return result.data;
+    } else if (result && typeof result === 'object') {
+      // 다른 형태의 응답 구조인 경우, 가능한 메모 데이터를 찾아서 반환
+      console.warn('예상치 못한 응답 구조, 가능한 메모 데이터를 찾아서 반환:', result);
+      
+      // result.data가 단일 메모 객체인 경우 (단일 메모)
+      if (result.data && result.data.memoId && !Array.isArray(result.data)) {
+        console.log('result.data가 단일 메모 객체:', result.data);
+        return [result.data];
+      }
+      
+      // result 자체가 메모 객체인 경우 (단일 메모)
+      if (result.memoId || result.title) {
+        return [result];
+      }
+      
+      // result 내부에 메모 배열이 있는 경우
+      const possibleMemoArrays = Object.values(result).filter(val => Array.isArray(val) && val.length > 0 && val[0] && (val[0].memoId || val[0].title));
+      if (possibleMemoArrays.length > 0) {
+        return possibleMemoArrays[0];
+      }
+      
+      // 메모 데이터를 찾을 수 없는 경우
+      console.error('응답에서 메모 데이터를 찾을 수 없음:', result);
+      return [];
+    } else {
+      console.error('응답을 파싱할 수 없음:', result);
+      return [];
+    }
+  } catch (error) {
+    console.error('❌ 사용자 메모 조회 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.memosEndpoint}${userId}`);
+    throw error;
+  }
+};
+
+// 팔로잉 목록 조회 함수
+export const getFollowingList = async (userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/user/follows`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('팔로잉 목록 조회 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 팔로잉 목록 조회 성공:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ 팔로잉 목록 조회 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/follows`);
+    throw error;
+  }
+};
+
+// 언팔로우 함수
+export const unfollowUser = async (userId, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    // 이미지에 표시된 API 경로에 맞춤: /api/user/unfollow/{user_id}
+    const response = await fetch(`${config.baseURL}/user/unfollow/${userId}`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('언팔로우 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 언팔로우 성공:', userId);
+    
+    // 이미지의 API 명세에 따른 응답 구조 처리
+    // { "success": true|false, "error": null|"Error Message" }
+    if (result && typeof result === 'object') {
+      if (result.success === true) {
+        console.log('✅ 언팔로우 API 성공 응답:', result);
+        return result;
+      } else if (result.success === false) {
+        // API에서 명시적으로 실패를 반환한 경우
+        const errorMsg = result.error || '언팔로우에 실패했습니다.';
+        throw new Error(errorMsg);
+      } else {
+        // success 필드가 없는 경우, 기존 응답 그대로 반환
+        console.log('⚠️ success 필드가 없는 응답, 기존 형태로 반환:', result);
+        return result;
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('❌ 언팔로우 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/unfollow/${userId}`);
+    throw error;
+  }
+};
+
+// 팔로워 목록 조회 함수
+export const getFollowersList = async (userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/user/followers`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('팔로워 목록 조회 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 팔로워 목록 조회 성공:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ 팔로워 목록 조회 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/followers`);
+    throw error;
+  }
+};
+
+// 팔로우 요청 승인 함수
+export const acceptFollowRequest = async (userId, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/user/accept/${userId}`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('팔로우 요청 승인 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 팔로우 요청 승인 성공:', userId);
+    return result;
+  } catch (error) {
+    console.error('❌ 팔로우 요청 승인 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/accept/${userId}`);
+    throw error;
+  }
+};
+
+// 팔로우 요청 거절 함수
+export const declineFollowRequest = async (userId, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/user/decline/${userId}`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('팔로우 요청 거절 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 팔로우 요청 거절 성공:', userId);
+    return result;
+  } catch (error) {
+    console.error('❌ 팔로우 요청 거절 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/decline/${userId}`);
+    throw error;
+  }
+};
+
+// 팔로우 끊기 함수
+export const defollowUser = async (userId, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/user/defollow/${userId}`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('팔로우 끊기 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 팔로우 끊기 성공:', userId);
+    return result;
+  } catch (error) {
+    console.error('❌ 팔로우 끊기 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/defollow/${userId}`);
+    throw error;
+  }
+};
+
+// 팔로우 요청
+export const followUser = async (userId, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/user/follow/${userId}`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('팔로우 요청 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ 팔로우 요청 성공:', userId);
+    return result;
+  } catch (error) {
+    console.error('❌ 팔로우 요청 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/follow/${userId}`);
+    throw error;
+  }
+};
+
+// 팔로잉 수 조회 함수
+export const getFollowingCount = async (userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/user/follows`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('팔로잉 수 조회 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    
+    // 응답에서 팔로잉 수 추출
+    let followingCount = 0;
+    if (result && result.data && Array.isArray(result.data.users)) {
+      followingCount = result.data.users.length;
+    } else if (result && Array.isArray(result)) {
+      followingCount = result.length;
+    } else if (result && result.count !== undefined) {
+      followingCount = result.count;
+    }
+    
+    console.log('✅ 팔로잉 수 조회 성공:', followingCount);
+    return followingCount;
+  } catch (error) {
+    console.error('❌ 팔로잉 수 조회 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/follows`);
+    throw error;
+  }
+};
+
+// 팔로워 수 조회 함수
+export const getFollowersCount = async (userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await fetch(`${config.baseURL}/user/followers`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('팔로워 수 조회 에러 응답:', errorData);
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          errorMessage = `Server response: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    
+    // 응답에서 팔로워 수 추출
+    let followersCount = 0;
+    if (result && result.data && Array.isArray(result.data.users)) {
+      followersCount = result.data.users.length;
+    } else if (result && Array.isArray(result)) {
+      followersCount = result.length;
+    } else if (result && result.count !== undefined) {
+      followersCount = result.count;
+    }
+    
+    console.log('✅ 팔로워 수 조회 성공:', followersCount);
+    return followersCount;
+  } catch (error) {
+    console.error('❌ 팔로워 수 조회 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/user/followers`);
+    throw error;
+  }
+};
+
+// 특정 사용자의 팔로잉/팔로워 수를 한 번에 조회하는 함수
+export const getUserFollowCounts = async (userId, userToken) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    // 팔로잉과 팔로워 수를 병렬로 조회
+    const [followingResponse, followersResponse] = await Promise.all([
+      fetch(`${config.baseURL}/user/follows`, {
+        method: 'GET',
+        headers,
+      }),
+      fetch(`${config.baseURL}/user/followers`, {
+        method: 'GET',
+        headers,
+      })
+    ]);
+
+    // 팔로잉 수 처리
+    let followingCount = 0;
+    if (followingResponse.ok) {
+      try {
+        const followingResult = await followingResponse.json();
+        if (followingResult && followingResult.data && Array.isArray(followingResult.data.users)) {
+          followingCount = followingResult.data.users.length;
+        } else if (followingResult && Array.isArray(followingResult)) {
+          followingCount = followingResult.length;
+        } else if (followingResult && followingResult.count !== undefined) {
+          followingCount = followingResult.count;
+        }
+      } catch (parseError) {
+        console.warn('팔로잉 응답 파싱 실패:', parseError);
+      }
+    }
+
+    // 팔로워 수 처리
+    let followersCount = 0;
+    if (followersResponse.ok) {
+      try {
+        const followersResult = await followersResponse.json();
+        if (followersResult && followersResult.data && Array.isArray(followersResult.data.users)) {
+          followersCount = followersResult.data.users.length;
+        } else if (followersResult && Array.isArray(followersResult)) {
+          followersCount = followersResult.length;
+        } else if (followersResult && followersResult.count !== undefined) {
+          followersCount = followersResult.count;
+        }
+      } catch (parseError) {
+        console.warn('팔로워 응답 파싱 실패:', parseError);
+      }
+    }
+
+    console.log('✅ 사용자 팔로우 수 조회 성공:', { userId, followingCount, followersCount });
+    return {
+      following_count: followingCount,
+      follower_count: followersCount
+    };
+  } catch (error) {
+    console.error('❌ 사용자 팔로우 수 조회 실패:', error.message);
+    throw error;
+  }
+};
+
+

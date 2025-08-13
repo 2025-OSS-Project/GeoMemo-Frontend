@@ -108,9 +108,7 @@ export default function ThisMemo() {
                                     {memo.location?.address || '위치 없음'}
                                 </Text>
                             </View>
-                            <Text style={styles.content} numberOfLines={2}>
-                                {memo.content}
-                            </Text>
+
                             <Text style={styles.publicStatus}>
                                 {memo.isPublic ? '공개' : '비공개'}
                             </Text>

@@ -14,6 +14,8 @@ export default function EmailVerification() {
 
   // 회원가입에서 전달받은 이메일 주소
   const email = route.params?.email || '';
+  // 로그인에서 진입했는지 확인 (source 파라미터로 구분)
+  const isFromLogin = route.params?.source === 'login';
 
   const handleVerification = async () => {
     if (!code.trim()) {
@@ -35,7 +37,7 @@ export default function EmailVerification() {
     setErrorMessage('');
 
     try {
-      console.log('이메일 인증 시작:', { email, code });
+      console.log('이메일 인증 시작:', { email, code, isFromLogin });
       
       const result = await checkEmailVerification(email, code);
       
@@ -44,15 +46,15 @@ export default function EmailVerification() {
       // 인증 성공 시 사용자에게 알림
       Alert.alert(
         '인증 완료',
-        '이메일 인증이 완료되었습니다.',
+        '이메일 인증이 완료되었습니다. 로그인 화면으로 이동합니다.',
         [
           {
             text: '확인',
             onPress: () => {
               // 인증 완료 상태를 저장
               AsyncStorage.setItem('emailVerified', 'true');
-              // 메인 화면으로 이동
-              navigation.navigate('MemoMap');
+              // 로그인 화면으로 이동
+              navigation.navigate('Login');
             }
           }
         ]
@@ -82,18 +84,17 @@ export default function EmailVerification() {
     }
   };
 
-
-
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
-
-
       <View style={styles.content}>
         <Text style={styles.title}>이메일 인증</Text>
         <Text style={styles.description}>
-          {email ? `${email}로 발송된` : '이메일로 발송된'} 6자리 인증 코드를 입력해주세요.
+          {isFromLogin 
+            ? `${email}로 발송된 인증 코드를 입력해주세요.`
+            : `${email ? `${email}로 발송된` : '이메일로 발송된'} 6자리 인증 코드를 입력해주세요.`
+          }
         </Text>
 
         <View style={styles.emailContainer}>
@@ -104,6 +105,7 @@ export default function EmailVerification() {
         <TextInput
           style={[styles.input, errorMessage ? styles.inputError : null]}
           placeholder="6자리 숫자를 입력하세요"
+          placeholderTextColor="#999"
           keyboardType="numeric"
           maxLength={6}
           value={code}

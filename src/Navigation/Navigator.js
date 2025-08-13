@@ -18,6 +18,8 @@ import ChangeNickname from '../Screens/Setting/ChangeNickname'
 import ChangePassword from '../Screens/Setting/ChangePassword'
 import Follower from '../Screens/Profile/Follower'
 import Following from '../Screens/Profile/Following'
+import FollowManage from '../Screens/Profile/FollowManage'
+import FollowRequest from '../Screens/Profile/FollowRequest'
 import UserSearch from '../Screens/Profile/UserSearch'
 import PrivacySetting from '../Screens/Setting/PrivacySetting'
 
@@ -70,8 +72,10 @@ export default function Navigator() {
       <Stack.Screen name="EditProfile" component={EditProfile} />
       <Stack.Screen name="ChangeNickname" component={ChangeNickname} />
       <Stack.Screen name="ChangePassword" component={ChangePassword} />
-      <Stack.Screen name="Follower" component={Follower} />
-      <Stack.Screen name="Following" component={Following} />
+      <Stack.Screen name="Follower" component={Follower} options={{ headerShown: false }}/>
+      <Stack.Screen name="Following" component={Following} options={{ headerShown: false }}/>
+      <Stack.Screen name="FollowManage" component={FollowManage} options={{ headerShown: false }} />
+      <Stack.Screen name="FollowRequest" component={FollowRequest} options={{ headerShown: false }} />
       <Stack.Screen name="UserSearch" component={UserSearch} options={{ headerShown: false }} />
       <Stack.Screen name="PrivacySetting" component={PrivacySetting} />
     </Stack.Navigator>

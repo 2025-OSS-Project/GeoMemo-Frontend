@@ -3,12 +3,12 @@ import { TouchableOpacity, StyleSheet } from 'react-native';
 import { Fontisto } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-export default function SearchButton() {
+export default function SearchButton({ style }) {
   const navigation = useNavigation();
 
   return (
     <TouchableOpacity 
-      style={styles.searchButton} 
+      style={[styles.searchButton, style]} 
       onPress={() => navigation.navigate('UserSearch')}
       activeOpacity={0.8}
     >
@@ -19,9 +19,6 @@ export default function SearchButton() {
 
 const styles = StyleSheet.create({
   searchButton: {
-    position: 'absolute',
-    bottom: 60,
-    left: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
