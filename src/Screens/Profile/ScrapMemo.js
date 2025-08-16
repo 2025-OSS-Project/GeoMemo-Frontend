@@ -2,8 +2,60 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getScrapMemos } from '../../config/api';
-import { AntDesign } from '@expo/vector-icons';
+import { getScrapMemos, generatePresignedGetUrl } from '../../config/api';
+import { AntDesign, MaterialCommunityIcons } from '@expo/vector-icons';
+
+// ProfileImageWithPresignedUrl 컴포넌트 추가
+const ProfileImageWithPresignedUrl = ({ profileUrl, style }) => {
+  const [presignedUrl, setPresignedUrl] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const loadPresignedUrl = async () => {
+    if (!profileUrl) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(false);
+      const userToken = await AsyncStorage.getItem('userToken');
+      const url = await generatePresignedGetUrl(profileUrl, userToken);
+      setPresignedUrl(url);
+    } catch (err) {
+      console.error('프로필 이미지 presigned URL 로드 실패:', err);
+      setError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPresignedUrl();
+  }, [profileUrl]);
+
+  if (isLoading) {
+    return <View style={[style, { backgroundColor: '#ccc' }]} />;
+  }
+
+  if (error || !presignedUrl) {
+    return (
+      <View style={[style, { backgroundColor: '#E0E0E0', justifyContent: 'center', alignItems: 'center' }]}>
+        <MaterialCommunityIcons name="account" size={style.width ? style.width * 0.5 : 16} color="#999" />
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri: presignedUrl }}
+      style={style}
+      onError={(e) => console.log('🖼️ 이미지 로드 실패:', e.nativeEvent)}
+      onLoad={() => console.log('🖼️ 이미지 로드 성공')}
+    />
+  );
+};
 
 export default function ScrapMemo() {
   const navigation = useNavigation();
@@ -101,17 +153,10 @@ export default function ScrapMemo() {
               {/* 사용자 정보 표시 */}
               {memo.user && (
                 <View style={styles.userInfoContainer}>
-                  {memo.user.photoUrl ? (
-                    <Image 
-                      source={{ uri: memo.user.photoUrl }} 
-                      style={styles.userPhoto}
-                      defaultSource={require('../../../assets/icon.png')}
-                    />
-                  ) : (
-                    <View style={styles.userPhotoPlaceholder}>
-                      <AntDesign name="user" size={16} color="#999" />
-                    </View>
-                  )}
+                  <ProfileImageWithPresignedUrl
+                    profileUrl={memo.user.photoUrl}
+                    style={styles.userPhoto}
+                  />
                   <Text style={styles.username}>{memo.user.username || '사용자'}</Text>
                 </View>
               )}

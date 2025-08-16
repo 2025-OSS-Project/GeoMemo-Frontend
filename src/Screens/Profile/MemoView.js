@@ -1,8 +1,65 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Image, ActivityIndicator, Alert, Linking } from 'react-native';
 import { Ionicons, FontAwesome, AntDesign } from '@expo/vector-icons';
-import { getMemoById, scrapMemo, unscrapMemo, getCurrentUserInfo, checkIsScraped } from '../../config/api';
+import { getMemoById, scrapMemo, unscrapMemo, getCurrentUserInfo, checkIsScraped, generatePresignedGetUrl } from '../../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Presigned URL을 사용하여 프로필 이미지를 표시하는 컴포넌트
+const ProfileImageWithPresignedUrl = ({ profileUrl }) => {
+  const [presignedUrl, setPresignedUrl] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const loadPresignedUrl = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      if (!profileUrl) {
+        setError('프로필 URL이 없습니다.');
+        return;
+      }
+
+      // AsyncStorage에서 토큰 가져오기
+      const userToken = await AsyncStorage.getItem('userToken');
+      if (!userToken) {
+        setError('사용자 토큰이 없습니다.');
+        return;
+      }
+
+      const url = await generatePresignedGetUrl(profileUrl, userToken);
+      setPresignedUrl(url);
+    } catch (err) {
+      console.error('Presigned URL 생성 실패:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 컴포넌트 마운트 시 로드
+  useEffect(() => {
+    loadPresignedUrl();
+  }, [profileUrl]);
+
+  if (isLoading) {
+    return <ActivityIndicator size="small" color="#007AFF" />;
+  }
+
+  if (error || !presignedUrl) {
+    return null; // 에러 시 기본 프로필 이미지 표시
+  }
+
+  return (
+    <Image
+      source={{ uri: presignedUrl }}
+      style={styles.profileImage}
+      resizeMode="cover"
+      onError={(e) => console.log('🖼️ 이미지 로드 실패:', e.nativeEvent)}
+      onLoad={() => console.log('🖼️ 이미지 로드 성공')}
+    />
+  );
+};
 
 export default function MemoView({ navigation, route }) {
   const [isScrapped, setIsScrapped] = useState(false);
@@ -458,9 +515,13 @@ export default function MemoView({ navigation, route }) {
           >
             <View style={styles.profileCircle}>
               {memo.profileImage ? (
-                <Image source={{ uri: memo.profileImage }} style={styles.profileImage} />
+                <ProfileImageWithPresignedUrl 
+                  profileUrl={memo.profileImage} 
+                />
               ) : memo.user?.photoUrl ? (
-                <Image source={{ uri: memo.user.photoUrl }} style={styles.profileImage} />
+                <ProfileImageWithPresignedUrl 
+                  profileUrl={memo.user.photoUrl} 
+                />
               ) : null}
             </View>
           </TouchableOpacity>

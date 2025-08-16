@@ -3,12 +3,85 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Ale
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getUserInfoById, followUser, unfollowUser, getFollowingList, getFollowingCount, getFollowersCount } from '../../config/api';
+import { getUserInfoById, followUser, unfollowUser, getFollowingList, getFollowingCount, getFollowersCount, generatePresignedGetUrl } from '../../config/api';
 
 import OtherMemoList from './OtherMemoList';
 import Insight from './Insight';
 import HomeButton from '../Main/HomeButton';
 import BottomButtons from '../Main/BottomButtons';
+
+// Presigned URL을 사용하여 프로필 이미지를 표시하는 컴포넌트
+const ProfileImageWithPresignedUrl = ({ profileUrl }) => {
+  const [presignedUrl, setPresignedUrl] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const loadPresignedUrl = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      if (!profileUrl) {
+        setError('프로필 URL이 없습니다.');
+        return;
+      }
+
+      // AsyncStorage에서 토큰 가져오기
+      const userToken = await AsyncStorage.getItem('userToken');
+      if (!userToken) {
+        setError('사용자 토큰이 없습니다.');
+        return;
+      }
+
+      const url = await generatePresignedGetUrl(profileUrl, userToken);
+      setPresignedUrl(url);
+    } catch (err) {
+      console.error('Presigned URL 생성 실패:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 컴포넌트 마운트 시 로드
+  useEffect(() => {
+    loadPresignedUrl();
+  }, [profileUrl]);
+
+  // 화면 재진입 시 presigned URL 갱신 (만료 방지)
+  useFocusEffect(
+    React.useCallback(() => {
+      if (profileUrl && !isLoading) {
+        loadPresignedUrl();
+      }
+    }, [profileUrl])
+  );
+
+  if (isLoading) {
+    return <ActivityIndicator size="small" color="#007AFF" />;
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorPhotoCircle}>
+        <Ionicons name="image-outline" size={40} color="#999" />
+      </View>
+    );
+  }
+
+  if (!presignedUrl) {
+    return <Text style={styles.photoText}>photo</Text>;
+  }
+
+  return (
+    <Image
+      source={{ uri: presignedUrl }}
+      style={styles.profileImage}
+      onError={(e) => console.log('🖼️ 이미지 로드 실패:', e.nativeEvent)}
+      onLoad={() => console.log('🖼️ 이미지 로드 성공')}
+    />
+  );
+};
 
 export default function OtherProfile() {
   const navigation = useNavigation();
@@ -347,7 +420,9 @@ export default function OtherProfile() {
       <View style={styles.profileSection}>
         <View style={styles.photoCircle}>
           {userInfo?.user_profile ? (
-            <Image source={{ uri: userInfo.user_profile }} style={styles.profileImage} />
+            <ProfileImageWithPresignedUrl 
+              profileUrl={userInfo.user_profile} 
+            />
           ) : (
             <Text style={styles.photoText}>photo</Text>
           )}
@@ -456,6 +531,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#333',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  errorPhotoCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#f5f5f5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   photoText: {
     color: '#fff',
