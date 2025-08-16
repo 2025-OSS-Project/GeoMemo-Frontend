@@ -129,9 +129,9 @@ export default function FollowManage() {
           style={[styles.tabButton, activeTab === 'followers' && styles.activeTabButton]}
           onPress={() => setActiveTab('followers')}
         >
-          <Text style={[styles.tabText, activeTab === 'followers' && styles.activeTabText]}>
-            {Math.max(0, followersCount || 0)} Followers
-          </Text>
+                  <Text style={[styles.tabText, activeTab === 'followers' && styles.activeTabText]}>
+          {Math.max(0, followersCount || 0)} Follower
+        </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tabButton, activeTab === 'following' && styles.activeTabButton]}

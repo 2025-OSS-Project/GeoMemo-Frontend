@@ -2361,3 +2361,21 @@ export const updateProfileImage = async (profileImageUrl, userToken) => {
     throw error;
   }
 };
+
+// 프로필 이미지를 기본 이미지로 변경하는 함수
+export const setDefaultProfileImage = async (userToken) => {
+  try {
+    const headers = {
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await axios.post('https://dco69dhctdpt.cloudfront.net/api/user/set/profile-image-default', {}, { headers });
+
+    const result = response.data;
+    console.log('✅ 기본 프로필 이미지 설정 성공:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ 기본 프로필 이미지 설정 실패:', error.message);
+    throw error;
+  }
+};

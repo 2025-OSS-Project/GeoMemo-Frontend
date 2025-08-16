@@ -78,8 +78,8 @@ const ProfileImageWithPresignedUrl = ({ profileUrl }) => {
     <Image
       source={{ uri: presignedUrl }}
       style={styles.profileImage}
-      onError={(e) => console.log('🖼️ 이미지 로드 실패:', e.nativeEvent)}
-      onLoad={() => console.log('🖼️ 이미지 로드 성공')}
+      onError={(e) => console.log('이미지 로드 실패:', e.nativeEvent)}
+      onLoad={() => console.log('이미지 로드 성공')}
     />
   );
 };
@@ -259,7 +259,7 @@ export default function MyProfile() {
               navigation.navigate('FollowManage', { initialTab: 'followers', userNickname: userInfo?.user_nickname || '사용자' });
             }}>
               <Text style={styles.followNumber}>{userInfo?.follower_count || 0}</Text>
-              <Text style={styles.followLabel}>Followers</Text>
+              <Text style={styles.followLabel}>Follower</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.followBox} onPress={async () => {
               await refreshFollowCounts();
