@@ -16,6 +16,9 @@ export default function MemoView({ navigation, route }) {
   const memoFromParams = route?.params?.memo;
   const memoId = route?.params?.memoId || memoFromParams?.memoId || memoFromParams?.id;
   
+  // 응답/파라미터를 항상 "메모 객체"로 정규화
+  const normalizeMemo = (obj) => (obj?.data ?? obj ?? null);
+  
   console.log('=== MemoView memoId 추출 ===');
   console.log('route.params.memoId:', route?.params?.memoId);
   console.log('memoFromParams?.memoId:', memoFromParams?.memoId);
@@ -77,13 +80,27 @@ export default function MemoView({ navigation, route }) {
             location: memoFromParams.location
           });
           
-          setMemo(memoFromParams);
+          // 1) 우선 화면에 바로 보여주기 (스켈레톤)
+          const base = normalizeMemo(memoFromParams);
+          setMemo(base);
           
-                     // 스크랩 상태는 항상 API로 최신 상태 확인
-           console.log('스크랩 상태 API로 확인 시작');
-           const scrapMemoId = memoFromParams.memoId || memoFromParams.id;
-           console.log('스크랩 상태 확인에 사용할 memoId:', scrapMemoId);
-           await checkScrapStatus(scrapMemoId);
+          // 2) content 없으면 상세 호출로 보강
+          const idForFetch = memoId || base?.memoId || base?.id;
+          if (!base?.content && idForFetch) {
+            console.log('content가 없어서 상세 API 호출로 보강');
+            const userToken = await AsyncStorage.getItem('userToken');
+            const detail = normalizeMemo(await getMemoById(idForFetch, userToken));
+            if (detail) {
+              console.log('상세 API로 content 보강 완료:', detail);
+              setMemo(detail);
+              // 스크랩 상태도 상세 기준으로 확인
+              await checkScrapStatus(detail?.memoId || idForFetch);
+            }
+          } else {
+            console.log('이미 content가 있어서 스크랩만 확인');
+            // 이미 content가 있으면 스크랩만 확인
+            await checkScrapStatus(base?.memoId || base?.id);
+          }
           
           setIsLoading(false);
           return;
@@ -108,37 +125,18 @@ export default function MemoView({ navigation, route }) {
         
         console.log('메모 상세 조회 API 응답:', response);
         
-        // API 응답 구조에 따라 메모 데이터 추출
-        let memoData = null;
-        
-        if (response && response.success && response.data) {
-          // { success: true, data: {...} } 형태
-          console.log('응답이 { success: true, data: {...} } 형태');
-          memoData = response.data;
-        } else if (response && response.data) {
-          // { data: {...} } 형태
-          console.log('응답이 { data: {...} } 형태');
-          memoData = response.data;
-        } else if (response && (response.memoId || response.title || response.content)) {
-          // 직접 메모 객체 형태
-          console.log('응답이 직접 메모 객체 형태');
-          memoData = response;
-        } else {
-          console.error('예상치 못한 API 응답 구조:', response);
-          setError('메모 데이터 구조가 올바르지 않습니다.');
-          setIsLoading(false);
-          return;
-        }
-        
+        // 여러 형태 분기 처리 → 정규화로 단순화
+        const memoData = normalizeMemo(response);
+
         if (memoData) {
           console.log('✅ 메모 데이터 추출 성공:', memoData);
           console.log('메모 데이터 키들:', Object.keys(memoData));
           setMemo(memoData);
-                     // 스크랩 상태는 항상 API로 최신 상태 확인
-           console.log('스크랩 상태 API로 확인 시작');
-           const scrapMemoId = memoData.memoId || memoData.id;
-           console.log('스크랩 상태 확인에 사용할 memoId:', scrapMemoId);
-           await checkScrapStatus(scrapMemoId);
+          // 스크랩 상태는 항상 API로 최신 상태 확인
+          console.log('스크랩 상태 API로 확인 시작');
+          const scrapMemoId = memoData.memoId || memoData.id;
+          console.log('스크랩 상태 확인에 사용할 memoId:', scrapMemoId);
+          await checkScrapStatus(scrapMemoId);
         } else {
           console.error('메모 데이터를 추출할 수 없음');
           setError('메모 데이터를 불러올 수 없습니다.');
@@ -437,22 +435,24 @@ export default function MemoView({ navigation, route }) {
           {/* 프로필 사진 */}
           <TouchableOpacity 
             onPress={() => {
-              // 현재 사용자와 다른 사용자인지 확인
-              if (memo.userId && memo.userId !== myUserId) {
-                // 다른 사용자의 메모인 경우
-                navigation.navigate('OtherProfile', { userId: memo.userId });
-              } else if (memo.userId === myUserId) {
-                // 내 메모인 경우
-                navigation.navigate('MyProfile');
-              } else if (memo.user?.userId && memo.user.userId !== myUserId) {
-                // user 객체에 userId가 있는 경우
-                navigation.navigate('OtherProfile', { userId: memo.user.userId });
-              } else if (memo.user?.userId === myUserId) {
-                // 내 메모인 경우
-                navigation.navigate('MyProfile');
+              // 메모 작성자의 사용자 ID 추출 (여러 형태 지원)
+              const memoUserId = memo.userId || memo.user?.userId || memo.userId;
+              
+              // 현재 사용자 ID와 비교
+              if (memoUserId && myUserId) {
+                if (memoUserId.toString() === myUserId.toString()) {
+                  // 내 메모인 경우 MyProfile로 이동
+                  console.log('내 메모입니다. MyProfile로 이동');
+                  navigation.navigate('MyProfile');
+                } else {
+                  // 다른 사용자의 메모인 경우 OtherProfile로 이동
+                  console.log('다른 사용자의 메모입니다. OtherProfile로 이동:', memoUserId);
+                  navigation.navigate('OtherProfile', { userId: memoUserId });
+                }
               } else {
-                // userId 정보가 없는 경우
-                console.warn('사용자 ID 정보가 없습니다.');
+                // 사용자 ID 정보가 부족한 경우
+                console.warn('사용자 ID 정보가 부족합니다. memoUserId:', memoUserId, 'myUserId:', myUserId);
+                Alert.alert('오류', '사용자 정보를 확인할 수 없습니다.');
               }
             }}
           >
@@ -491,7 +491,7 @@ export default function MemoView({ navigation, route }) {
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.contentTitle}>{memo.title || '제목 없음'}</Text>
-          <Text style={styles.contentText}>{memo.content}</Text>
+          <Text style={styles.contentText}>{memo?.content ?? '내용 없음'}</Text>
         </ScrollView>
 
         {/* 메모 정보 */}

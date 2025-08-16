@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Entypo, AntDesign } from '@expo/vector-icons';
-import { deleteMemo, updateMemo } from '../../config/api';
+import { deleteMemo, updateMemo, getMemoById } from '../../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function AllMemoView() {
@@ -31,6 +31,34 @@ export default function AllMemoView() {
   const [editedTitle, setEditedTitle] = useState(initialMemo.title || '');
   const titleRef = useRef(null);
   const contentRef = useRef(null);
+
+  // 응답/파라미터를 항상 "메모 객체"로 정규화
+  const normalizeMemo = (obj) => (obj?.data ?? obj ?? null);
+
+  // 메모 데이터 가져오기 (content가 없으면 상세 API로 보강)
+  useEffect(() => {
+    const fetchMemoData = async () => {
+      try {
+        // content가 없으면 상세 API 호출로 보강
+        if (!initialMemo?.content && initialMemo?.memoId) {
+          console.log('content가 없어서 상세 API 호출로 보강');
+          const userToken = await AsyncStorage.getItem('userToken');
+          const detail = normalizeMemo(await getMemoById(initialMemo.memoId, userToken));
+          if (detail) {
+            console.log('상세 API로 content 보강 완료:', detail);
+            setMemo(detail);
+            setEditedContent(detail.content);
+            setEditedTitle(detail.title || '');
+            setIsPublic(detail.isPublic);
+          }
+        }
+      } catch (error) {
+        console.error('메모 상세 조회 중 오류:', error);
+      }
+    };
+
+    fetchMemoData();
+  }, [initialMemo]);
 
   // 메모 날짜 포맷팅
   const formatDate = (dateString) => {
@@ -122,13 +150,13 @@ export default function AllMemoView() {
   // 수정 저장 함수
   const handleSaveEdit = async () => {
     try {
-      console.log('🔧 메모 수정 시작:', memo.memoId);
-      console.log('📝 수정할 내용:', editedContent);
-      console.log('📝 수정할 제목:', editedTitle);
+      console.log('메모 수정 시작:', memo.memoId);
+      console.log('수정할 내용:', editedContent);
+      console.log('수정할 제목:', editedTitle);
       
       setIsUpdating(true);
       const userToken = await AsyncStorage.getItem('userToken');
-      console.log('🔑 사용자 토큰:', userToken ? '토큰 있음' : '토큰 없음');
+      console.log('사용자 토큰:', userToken ? '토큰 있음' : '토큰 없음');
       
       const updateData = {
         title: editedTitle,
@@ -183,6 +211,7 @@ export default function AllMemoView() {
       }}>
         <View style={styles.mainContainer}>
           {/* 제목 줄 */}
+          
           <View style={styles.inputRow}>
             {isEditing ? (
               <TextInput
@@ -233,7 +262,7 @@ export default function AllMemoView() {
                 spellCheck={true}
               />
             ) : (
-              <Text style={styles.contentText}>{memo.content}</Text>
+              <Text style={styles.contentText}>{memo?.content ?? '내용 없음'}</Text>
             )}
           </ScrollView>
 
