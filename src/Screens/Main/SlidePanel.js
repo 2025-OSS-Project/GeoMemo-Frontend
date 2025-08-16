@@ -99,7 +99,7 @@ export default function SlidePanel({
     
     try {
       const queryParams = new URLSearchParams({
-        view_setting: filter === 'all' ? 'all' : filter === 'following' ? 'following' : filter === 'me' ? 'self' : 'all',
+        view_setting: filter === 'all' ? 'all' : filter === 'following' ? 'follows' : filter === 'me' ? 'self' : 'all',
         // 지도 경계 좌표 추가 (API 문서에 맞게 lat1, lon1, lat2, lon2 사용)
         lat1: debouncedMapBounds.northWest.latitude.toFixed(6),
         lon1: debouncedMapBounds.northWest.longitude.toFixed(6),
@@ -113,7 +113,7 @@ export default function SlidePanel({
        console.log('- lon1:', debouncedMapBounds.northWest.longitude.toFixed(7));
        console.log('- lat2:', debouncedMapBounds.southEast.latitude.toFixed(7));
        console.log('- lon2:', debouncedMapBounds.southEast.longitude.toFixed(7));
-       console.log('- view_setting:', filter === 'all' ? 'all' : filter === 'following' ? 'following' : filter === 'me' ? 'self' : 'all');
+       console.log('- view_setting:', filter === 'all' ? 'all' : filter === 'following' ? 'follows' : filter === 'me' ? 'self' : 'all');
        console.log('========================');
 
       const url = `https://dco69dhctdpt.cloudfront.net/api/memo/all?${queryParams}`;
