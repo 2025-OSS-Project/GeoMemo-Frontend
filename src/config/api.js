@@ -7,6 +7,7 @@ export const API_CONFIG = {
     baseURL: 'https://dco69dhctdpt.cloudfront.net/api',
     mapBoundsEndpoint: 'https://dco69dhctdpt.cloudfront.net/api/map-bounds',
     memosEndpoint: 'https://dco69dhctdpt.cloudfront.net/api/memo/',
+    presignedUrlEndpoint: 'https://dco69dhctdpt.cloudfront.net/generate-presigned-get-url',
   },
   
   // 프로덕션 환경 (새로운 백엔드 서버)
@@ -14,6 +15,7 @@ export const API_CONFIG = {
     baseURL: 'https://dco69dhctdpt.cloudfront.net/api',
     mapBoundsEndpoint: 'https://dco69dhctdpt.cloudfront.net/api/map-bounds',
     memosEndpoint: 'https://dco69dhctdpt.cloudfront.net/api/memo/',
+    presignedUrlEndpoint: 'https://dco69dhctdpt.cloudfront.net/generate-presigned-get-url',
   }
 };
 
@@ -92,6 +94,46 @@ export const sendMapBoundsToBackend = async (bounds, userToken = null) => {
     console.error(' API 엔드포인트:', config.mapBoundsEndpoint);
     console.error(' 전송 시도한 bounds:', formattedBounds);
     throw error;
+  }
+};
+
+// Presigned URL 생성 함수 (비공개 S3 이미지 접근용)
+export const generatePresignedGetUrl = async (fileUrl, userToken = null) => {
+  const config = getApiConfig();
+  const qs = `file_url=${encodeURIComponent(fileUrl)}`;
+  const url = `${config.presignedUrlEndpoint}?${qs}`;
+
+  try {
+    const headers = {};
+    if (userToken) headers['Authorization'] = `Bearer ${userToken}`;
+
+    const res = await fetch(url, { method: 'GET', headers });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status} ${res.statusText} - ${body}`);
+    }
+
+    const raw = await res.text();               // 서버가 "..."(따옴표 포함)로 줄 수 있음
+    let out = raw.trim();
+
+    // JSON 문자열이면 파싱
+    try {
+      const maybe = JSON.parse(raw);
+      if (typeof maybe === 'string') out = maybe;      // "https://..." → https://...
+      else if (maybe && typeof maybe === 'object' && maybe.url) out = maybe.url;
+    } catch { /* 그냥 텍스트였던 경우 통과 */ }
+
+    // 혹시 따옴표가 남아있으면 제거
+    out = out.replace(/^"+|"+$/g, '');
+
+    if (!/^https?:\/\//i.test(out)) {
+      throw new Error(`Invalid presigned url: ${out}`);
+    }
+    return out;
+  } catch (err) {
+    console.error('❌ Presigned GET URL 생성 실패:', err.message, '\n➡️ 요청 URL:', url);
+    throw err;
   }
 };
 
@@ -2319,5 +2361,3 @@ export const updateProfileImage = async (profileImageUrl, userToken) => {
     throw error;
   }
 };
-
-

@@ -22,7 +22,7 @@ import { Ionicons, FontAwesome, FontAwesome5, Entypo } from '@expo/vector-icons'
 import MapSection from './MapSection';
 import SlidePanel from './SlidePanel';
 import RouteBox from './RouteBox';
-import { getAllMemos, updateViewSettings } from '../../config/api';
+import { getAllMemos, updateViewSettings, getCurrentUserInfo } from '../../config/api';
 // MemoModal import 제거 - Profile의 memoView 사용
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -374,6 +374,20 @@ function Home() {
   // 화면에 포커스가 돌아왔을 때 최적화 (필요한 경우에만 실행)
   useFocusEffect(
     useCallback(() => {
+      // 사용자 정보 가져오기
+      const loadUserInfo = async () => {
+        if (userToken && !myUser) {
+          try {
+            const userInfo = await getCurrentUserInfo(userToken);
+            setMyUser(userInfo);
+          } catch (error) {
+            console.error('사용자 정보 로드 실패:', error);
+          }
+        }
+      };
+
+      loadUserInfo();
+
       // 홈 화면으로 돌아왔을 때 메모 데이터 새로 불러오기 (필터 변경이 아닌 경우에만)
       if (userToken && !route.params?.filterChanged) {
         fetchAllMemos();
@@ -439,7 +453,7 @@ function Home() {
       if (route.params?.filterChanged) {
         navigation.setParams({ filterChanged: false });
       }
-    }, [location, route.params?.refreshLocation, route.params?.filterChanged, navigation, userToken, fetchAllMemos, mapBounds])
+    }, [location, route.params?.refreshLocation, route.params?.filterChanged, navigation, userToken, fetchAllMemos, mapBounds, myUser])
   );
 
   const goToCurrentLocation = useCallback(() => {
@@ -722,7 +736,7 @@ function Home() {
         filter={filter}
         setFilter={handleFilterChange}
         myUserId={myUser?.id}
-        myProfileImage={myUser?.profileImage}
+        myProfileImage={myUser?.user_profile}
         followingIds={followingIds}
         myUser={myUser}
         onPressMemo={handleMemoPress}

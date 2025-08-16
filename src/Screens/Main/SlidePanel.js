@@ -1,9 +1,61 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Animated, Image, StyleSheet, ScrollView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getCurrentUserInfo } from '../../config/api';
+import { getCurrentUserInfo, generatePresignedGetUrl, getUserInfoById } from '../../config/api';
+
+// ProfileImageWithPresignedUrl 컴포넌트 추가
+const ProfileImageWithPresignedUrl = ({ profileUrl, style, onPress }) => {
+  const [presignedUrl, setPresignedUrl] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const loadPresignedUrl = async () => {
+    if (!profileUrl) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(false);
+      const userToken = await AsyncStorage.getItem('userToken');
+      const url = await generatePresignedGetUrl(profileUrl, userToken);
+      setPresignedUrl(url);
+    } catch (err) {
+      console.error('프로필 이미지 presigned URL 로드 실패:', err);
+      setError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPresignedUrl();
+  }, [profileUrl]);
+
+  if (isLoading) {
+    return <View style={[style, { backgroundColor: '#ccc' }]} />;
+  }
+
+  if (error || !presignedUrl) {
+    return (
+      <View style={[style, { backgroundColor: '#E0E0E0', justifyContent: 'center', alignItems: 'center' }]}>
+        <MaterialCommunityIcons name="account" size={style.width ? style.width * 0.5 : 20} color="#999" />
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri: presignedUrl }}
+      style={style}
+      onError={(e) => console.log('🖼️ 이미지 로드 실패:', e.nativeEvent)}
+      onLoad={() => console.log('🖼️ 이미지 로드 성공')}
+    />
+  );
+};
 
 export default function SlidePanel({
   slideAnim,
@@ -26,6 +78,7 @@ export default function SlidePanel({
   const [isLoading, setIsLoading] = useState(false);
   const [debouncedMapBounds, setDebouncedMapBounds] = useState(null);
   const [currentUserInfo, setCurrentUserInfo] = useState(null);
+  const [currentUserProfileImage, setCurrentUserProfileImage] = useState(null);
   const debounceTimeoutRef = useRef(null);
   const prevMapBoundsRef = useRef(null);
 
@@ -37,6 +90,16 @@ export default function SlidePanel({
         if (userToken) {
           const currentUser = await getCurrentUserInfo(userToken);
           setCurrentUserInfo(currentUser);
+          
+          // 현재 사용자의 프로필 이미지 가져오기
+          if (currentUser?.user_id) {
+            try {
+              const userInfo = await getUserInfoById(currentUser.user_id, userToken);
+              setCurrentUserProfileImage(userInfo?.user_profile);
+            } catch (error) {
+              console.error('프로필 이미지 로드 실패:', error);
+            }
+          }
         }
       } catch (error) {
         console.error('현재 사용자 정보 로드 실패:', error);
@@ -45,6 +108,25 @@ export default function SlidePanel({
 
     loadCurrentUserInfo();
   }, []);
+
+  // 화면에 포커스가 돌아왔을 때 사용자 정보 새로고침
+  useFocusEffect(
+    useCallback(() => {
+      const refreshUserInfo = async () => {
+        try {
+          const userToken = await AsyncStorage.getItem('userToken');
+          if (userToken && currentUserInfo?.user_id) {
+            const userInfo = await getUserInfoById(currentUserInfo.user_id, userToken);
+            setCurrentUserProfileImage(userInfo?.user_profile);
+          }
+        } catch (error) {
+          console.error('사용자 정보 새로고침 실패:', error);
+        }
+      };
+
+      refreshUserInfo();
+    }, [currentUserInfo])
+  );
 
   // mapBounds 변경 시 디바운싱 적용 (실시간 위치 추적 시 API 호출 방지)
   useEffect(() => {
@@ -208,7 +290,7 @@ export default function SlidePanel({
       {/* 🔹 필터 버튼 영역 */}
       <View style={[styles.filterRow, { alignItems: 'center' }]}>
         <TouchableOpacity onPress={() => navigation.navigate('MyProfile')}>
-          <Image source={{ uri: myProfileImage }} style={styles.profileCircle} />
+          <ProfileImageWithPresignedUrl profileUrl={currentUserProfileImage} style={styles.profileCircle} />
         </TouchableOpacity>
         <TouchableOpacity 
           onPress={() => setFilter('all')}
@@ -312,15 +394,7 @@ export default function SlidePanel({
                        }
                      }}
                    >
-                    {memo.profileImage ? (
-                      <Image 
-                        source={{ uri: memo.profileImage }} 
-                        style={styles.memoProfileCircle}
-                      />
-                    ) : (
-                      <View style={[styles.memoProfileCircle, styles.defaultProfile]}>
-                      </View>
-                    )}
+                    <ProfileImageWithPresignedUrl profileUrl={memo.profileImage} style={styles.memoProfileCircle} />
                   </TouchableOpacity>
 
                   {/* 메모 정보 */}

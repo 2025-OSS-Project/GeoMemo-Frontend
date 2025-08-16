@@ -15,7 +15,64 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { searchUsers } from '../../config/api';
+import { searchUsers, generatePresignedGetUrl } from '../../config/api';
+
+// Presigned URL을 사용하여 프로필 이미지를 표시하는 컴포넌트
+const ProfileImageWithPresignedUrl = ({ profileUrl }) => {
+  const [presignedUrl, setPresignedUrl] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const loadPresignedUrl = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      if (!profileUrl) {
+        setError('프로필 URL이 없습니다.');
+        return;
+      }
+
+      // AsyncStorage에서 토큰 가져오기
+      const userToken = await AsyncStorage.getItem('userToken');
+      if (!userToken) {
+        setError('사용자 토큰이 없습니다.');
+        return;
+      }
+
+      const url = await generatePresignedGetUrl(profileUrl, userToken);
+      setPresignedUrl(url);
+    } catch (err) {
+      console.error('Presigned URL 생성 실패:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 컴포넌트 마운트 시 로드
+  useEffect(() => {
+    loadPresignedUrl();
+  }, [profileUrl]);
+
+  if (isLoading) {
+    return <ActivityIndicator size="small" color="#007AFF" />;
+  }
+
+  if (error || !presignedUrl) {
+    return null; // 에러 시 기본 프로필 이미지 표시
+  }
+
+  return (
+    <Image
+      source={{ uri: presignedUrl }}
+      style={styles.profileImage}
+      resizeMode="cover"
+      onError={(e) => console.log('🖼️ 이미지 로드 실패:', e.nativeEvent)}
+      onLoad={() => console.log('🖼️ 이미지 로드 성공')}
+    />
+  );
+};
 
 export default function UserSearch() {
   const navigation = useNavigation();
@@ -144,11 +201,16 @@ export default function UserSearch() {
       }}
     >
       <View style={styles.profileImageContainer}>
-        <Image 
-          source={{ uri: item.profileImage }} 
-          style={styles.profileImage}
-          defaultSource={require('../../../assets/icon.png')}
-        />
+        {item.profileImage ? (
+          <ProfileImageWithPresignedUrl 
+            profileUrl={item.profileImage} 
+          />
+        ) : (
+          <Image 
+            source={require('../../../assets/icon.png')} 
+            style={styles.profileImage}
+          />
+        )}
       </View>
       <View style={styles.userInfo}>
         <Text style={styles.username}>{item.username}</Text>
