@@ -435,22 +435,24 @@ export default function MemoView({ navigation, route }) {
           {/* 프로필 사진 */}
           <TouchableOpacity 
             onPress={() => {
-              // 현재 사용자와 다른 사용자인지 확인
-              if (memo.userId && memo.userId !== myUserId) {
-                // 다른 사용자의 메모인 경우
-                navigation.navigate('OtherProfile', { userId: memo.userId });
-              } else if (memo.userId === myUserId) {
-                // 내 메모인 경우
-                navigation.navigate('MyProfile');
-              } else if (memo.user?.userId && memo.user.userId !== myUserId) {
-                // user 객체에 userId가 있는 경우
-                navigation.navigate('OtherProfile', { userId: memo.user.userId });
-              } else if (memo.user?.userId === myUserId) {
-                // 내 메모인 경우
-                navigation.navigate('MyProfile');
+              // 메모 작성자의 사용자 ID 추출 (여러 형태 지원)
+              const memoUserId = memo.userId || memo.user?.userId || memo.userId;
+              
+              // 현재 사용자 ID와 비교
+              if (memoUserId && myUserId) {
+                if (memoUserId.toString() === myUserId.toString()) {
+                  // 내 메모인 경우 MyProfile로 이동
+                  console.log('내 메모입니다. MyProfile로 이동');
+                  navigation.navigate('MyProfile');
+                } else {
+                  // 다른 사용자의 메모인 경우 OtherProfile로 이동
+                  console.log('다른 사용자의 메모입니다. OtherProfile로 이동:', memoUserId);
+                  navigation.navigate('OtherProfile', { userId: memoUserId });
+                }
               } else {
-                // userId 정보가 없는 경우
-                console.warn('사용자 ID 정보가 없습니다.');
+                // 사용자 ID 정보가 부족한 경우
+                console.warn('사용자 ID 정보가 부족합니다. memoUserId:', memoUserId, 'myUserId:', myUserId);
+                Alert.alert('오류', '사용자 정보를 확인할 수 없습니다.');
               }
             }}
           >
