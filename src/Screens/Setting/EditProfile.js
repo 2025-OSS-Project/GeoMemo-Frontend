@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Alert, ActivityIndicator, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
+// expo-image-picker 사용 (권장)
+import * as ExpoImagePicker from 'expo-image-picker';
+// react-native-image-picker도 설치되어 있어서 별칭 사용
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 import { generatePresignedUrl, updateProfileImage } from '../../config/api';
+import { uploadWithXHR } from '../../utils/s3Upload';
 
 export default function EditProfile() {
   const navigation = useNavigation();
@@ -14,29 +16,94 @@ export default function EditProfile() {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('');
 
-  // 권한 요청 함수
-  const requestPermissions = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('권한 필요', '사진을 선택하려면 갤러리 접근 권한이 필요합니다.');
+  // ExpoImagePicker MediaTypes 설정
+  console.log('🔧 ExpoImagePicker 객체 확인:', {
+    ExpoImagePicker: ExpoImagePicker,
+    hasMediaTypeOptions: !!ExpoImagePicker.MediaTypeOptions,
+    MediaTypeOptions: ExpoImagePicker.MediaTypeOptions,
+    MediaType: ExpoImagePicker.MediaType,
+    availableKeys: Object.keys(ExpoImagePicker)
+  });
+  
+  // MediaTypeOptions가 없을 경우를 대비한 안전한 처리
+  let MEDIA_TYPES;
+  try {
+    if (ExpoImagePicker.MediaTypeOptions && ExpoImagePicker.MediaTypeOptions.Images) {
+      MEDIA_TYPES = ExpoImagePicker.MediaTypeOptions.Images;
+      console.log('✅ MediaTypeOptions.Images 사용:', MEDIA_TYPES);
+    } else {
+      // fallback: 숫자 값 사용 (expo-image-picker 내부적으로 1은 이미지를 의미)
+      MEDIA_TYPES = 1;
+      console.log('⚠️ MediaTypeOptions.Images 없음, fallback 값 사용:', MEDIA_TYPES);
+    }
+  } catch (error) {
+    console.error('❌ MediaTypes 설정 실패:', error);
+    MEDIA_TYPES = 1; // 최후 fallback
+  }
+  
+  console.log('🔧 MediaTypes 최종 값:', MEDIA_TYPES);
+
+  // 미디어 라이브러리 권한 확실히 확보
+  const ensureMediaPermission = async () => {
+    try {
+      // 현재 권한 상태 먼저 확인
+      const current = await ExpoImagePicker.getMediaLibraryPermissionsAsync();
+      console.log('현재 미디어 라이브러리 권한 상태:', current);
+      
+      if (current.granted) {
+        console.log('✅ 미디어 라이브러리 권한 이미 허용됨');
+        return true;
+      }
+
+      // 권한 요청
+      console.log('미디어 라이브러리 권한 요청 중...');
+      const { status, canAskAgain } = await ExpoImagePicker.requestMediaLibraryPermissionsAsync();
+      console.log('권한 요청 결과:', { status, canAskAgain });
+      
+      if (status === 'granted') {
+        console.log('✅ 미디어 라이브러리 권한 허용됨');
+        return true;
+      }
+
+      if (!canAskAgain) {
+        Alert.alert(
+          '권한 필요',
+          '설정 > 앱 권한에서 사진 라이브러리 접근을 허용해주세요.',
+          [
+            { text: '설정으로 이동', onPress: () => Linking.openSettings() },
+            { text: '취소', style: 'cancel' }
+          ]
+        );
+      } else {
+        Alert.alert('권한 필요', '사진을 선택하려면 갤러리 접근 권한이 필요합니다.');
+      }
+      return false;
+    } catch (error) {
+      console.error('권한 확인/요청 실패:', error);
       return false;
     }
-    return true;
   };
 
   // 이미지 선택 옵션 표시
   const showImagePicker = () => {
+    console.log('이미지 선택 옵션 표시');
     Alert.alert(
       '프로필 사진 선택',
       '어떤 방법으로 사진을 선택하시겠어요?',
       [
         {
           text: '카메라',
-          onPress: openCamera,
+          onPress: () => {
+            console.log('카메라 선택됨');
+            openCamera();
+          },
         },
         {
           text: '갤러리',
-          onPress: openGallery,
+          onPress: () => {
+            console.log('갤러리 선택됨');
+            openGallery();
+          },
         },
         {
           text: '취소',
@@ -46,46 +113,119 @@ export default function EditProfile() {
     );
   };
 
+  // 카메라 권한 확실히 확보
+  const ensureCameraPermission = async () => {
+    try {
+      // 현재 권한 상태 먼저 확인
+      const current = await ExpoImagePicker.getCameraPermissionsAsync();
+      console.log('현재 카메라 권한 상태:', current);
+      
+      if (current.granted) {
+        console.log('✅ 카메라 권한 이미 허용됨');
+        return true;
+      }
+
+      // 권한 요청
+      console.log('카메라 권한 요청 중...');
+      const { status, canAskAgain } = await ExpoImagePicker.requestCameraPermissionsAsync();
+      console.log('카메라 권한 요청 결과:', { status, canAskAgain });
+      
+      if (status === 'granted') {
+        console.log('✅ 카메라 권한 허용됨');
+        return true;
+      }
+
+      if (!canAskAgain) {
+        Alert.alert(
+          '권한 필요',
+          '설정 > 앱 권한에서 카메라 접근을 허용해주세요.',
+          [
+            { text: '설정으로 이동', onPress: () => Linking.openSettings() },
+            { text: '취소', style: 'cancel' }
+          ]
+        );
+      } else {
+        Alert.alert('권한 필요', '카메라를 사용하려면 카메라 접근 권한이 필요합니다.');
+      }
+      return false;
+    } catch (error) {
+      console.error('카메라 권한 확인/요청 실패:', error);
+      return false;
+    }
+  };
+
   // 카메라로 사진 촬영
   const openCamera = async () => {
-    const hasPermission = await ImagePicker.requestCameraPermissionsAsync();
-    if (hasPermission.status !== 'granted') {
-      Alert.alert('권한 필요', '카메라를 사용하려면 카메라 접근 권한이 필요합니다.');
-      return;
-    }
+    try {
+      const hasPermission = await ensureCameraPermission();
+      if (!hasPermission) return;
 
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
+      console.log('카메라 실행 중...');
+      const result = await ExpoImagePicker.launchCameraAsync({
+        mediaTypes: MEDIA_TYPES,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
 
-    if (!result.canceled) {
-      setSelectedImage(result.assets[0].uri);
-      console.log('선택된 이미지 URI:', result.assets[0].uri);
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const uri = result.assets[0].uri;
+        setSelectedImage(uri);
+        console.log('✅ 카메라로 촬영된 이미지 URI:', uri);
+      }
+    } catch (error) {
+      console.error('카메라 실행 실패:', error);
+      Alert.alert('오류', '카메라를 실행할 수 없습니다.');
     }
   };
 
   // 갤러리에서 사진 선택
   const openGallery = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
+    try {
+      const hasPermission = await ensureMediaPermission();
+      if (!hasPermission) return;
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
+      console.log('갤러리 실행 중...');
+      
+      // 일부 단말은 권한 요청 직후 바로 실행하면 UI가 안 뜨는 버그가 있어, 100ms 지연
+      setTimeout(async () => {
+        try {
+          const result = await ExpoImagePicker.launchImageLibraryAsync({
+            mediaTypes: MEDIA_TYPES,   // 호환성 있는 방식
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+            presentationStyle: 'fullScreen',            // iOS용, 문제 없으면 둬도 됨
+          });
 
-    if (!result.canceled) {
-      setSelectedImage(result.assets[0].uri);
-      console.log('선택된 이미지 URI:', result.assets[0].uri);
+          if (!result.canceled && result.assets && result.assets[0]) {
+            const uri = result.assets[0].uri;
+            setSelectedImage(uri);
+            console.log('✅ 갤러리에서 선택된 이미지 URI:', uri);
+          }
+        } catch (error) {
+          console.error('갤러리 실행 중 오류:', error);
+          Alert.alert('오류', '갤러리를 열 수 없습니다.');
+        }
+      }, 100);
+      
+    } catch (error) {
+      console.error('갤러리 열기 실패:', error);
+      Alert.alert('오류', '갤러리를 열 수 없습니다.');
     }
   };
 
-  // 프로필 저장 함수 (Presigned URL 방식 + axios)
+  // 파일명/타입 안전 처리 헬퍼
+  const pickFileNameAndType = (asset) => {
+    const mime = asset?.mimeType || 'image/jpeg';
+    const ext = mime === 'image/png' ? 'png'
+              : mime === 'image/webp' ? 'webp'
+              : 'jpeg';
+    const fileName = `profile_${Date.now()}.${ext}`;
+    return { fileName, mime };
+  };
+
+  // 프로필 저장 함수 (S4 호환 presigned 방식)
   const handleSaveProfile = async () => {
     if (!selectedImage) {
       Alert.alert('알림', '변경할 프로필 사진을 선택해주세요.');
@@ -103,42 +243,58 @@ export default function EditProfile() {
         return;
       }
       
-      // 2. 파일명과 타입 설정
-      const fileExtension = selectedImage.split('.').pop();
-      const fileName = `profile_${Date.now()}.${fileExtension}`;
-      const fileType = `image/${fileExtension}`;
+      // 2-1. 파일명/타입 안전 결정
+      // 실제 이미지에서 MIME 타입 추출 시도
+      let mimeType = 'image/jpeg'; // 기본값
+      try {
+        const response = await fetch(selectedImage);
+        const blob = await response.blob();
+        mimeType = blob.type || 'image/jpeg';
+      } catch (error) {
+        console.warn('MIME 타입 추출 실패, 기본값 사용:', error.message);
+      }
+      
+      const asset = { uri: selectedImage, mimeType };
+      const { fileName, mime } = pickFileNameAndType(asset);
 
-      // 3. Presigned URL 생성
+      // 3. Presigned URL 생성 (백엔드 스펙에 맞춰 그대로 유지)
       console.log('Presigned URL 생성 시작...');
-      const presignedUrl = await generatePresignedUrl(fileName, fileType, userToken);
-      
-      // 4. 이미지를 base64로 변환 (React Native 호환)
-      const response = await fetch(selectedImage);
-      const arrayBuffer = await response.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-      
-      // 5. axios를 사용하여 S3에 직접 업로드
-      console.log('S3 업로드 시작...');
+      const presigned = await generatePresignedUrl(fileName, mime, userToken);
+      const uploadUrl = typeof presigned === 'string' ? presigned : presigned.url; // ★ 중요
+      if (!uploadUrl) throw new Error('Presigned URL이 비어있습니다.');
+
+      // 4. 진행률이 필요한 경우 XHR 사용, 아니면 fetch 사용
+      console.log('S3(S4) 업로드 시작...');
       setStatus('파일 업로드 중...');
       
-      await axios.put(presignedUrl, base64, {
-        headers: {
-          'Content-Type': fileType,
-        },
-        onUploadProgress: (progressEvent) => {
-          const percent = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          setProgress(percent);
-        },
-      });
+      if (true) { // 진행률 표시를 원할 경우 true로 설정
+        // XHR을 사용한 진행률 표시 업로드
+        await uploadWithXHR(uploadUrl, selectedImage, mime, (progress) => {
+          setProgress(progress);
+        });
+      } else {
+        // fetch를 사용한 간단한 업로드 (진행률 없음)
+        const fileRes = await fetch(selectedImage);
+        const blob = await fileRes.blob();
+        
+        const putRes = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': mime },
+          body: blob,
+        });
+
+        if (!putRes.ok) {
+          const t = await putRes.text().catch(() => '');
+          throw new Error(`업로드 실패 ${putRes.status}: ${t}`);
+        }
+      }
 
       setStatus('업로드 완료');
       setProgress(100);
 
-      // 6. 업로드된 이미지 URL 생성 (presigned URL에서 쿼리 파라미터 제거)
-      const imageUrl = presignedUrl.split('?')[0];
-      
+      // 6. 보기용 URL (버킷/CF 공개 정책에 따라 달라질 수 있음)
+      const imageUrl = uploadUrl.split('?')[0];
+
       // 7. 백엔드에 이미지 URL 저장
       console.log('백엔드에 URL 저장 시작...');
       await updateProfileImage(imageUrl, userToken);

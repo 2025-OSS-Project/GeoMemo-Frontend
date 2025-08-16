@@ -2278,8 +2278,18 @@ export const generatePresignedUrl = async (fileName, fileType, userToken) => {
 
     const response = await axios.get(url, { headers });
 
-    const presignedUrl = response.data;
-    if (!presignedUrl) throw new Error('presigned URL을 받지 못했습니다.');
+    const presignedData = response.data;
+    if (!presignedData) throw new Error('presigned URL을 받지 못했습니다.');
+
+    // S4 호환성: 응답이 문자열이거나 { url: "..." } 객체일 수 있음
+    let presignedUrl;
+    if (typeof presignedData === 'string') {
+      presignedUrl = presignedData;
+    } else if (presignedData && typeof presignedData === 'object' && presignedData.url) {
+      presignedUrl = presignedData.url;
+    } else {
+      throw new Error('presigned URL 형식이 올바르지 않습니다.');
+    }
 
     console.log('✅ Presigned URL 생성 성공:', presignedUrl);
     return presignedUrl;

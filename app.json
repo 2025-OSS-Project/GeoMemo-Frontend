@@ -22,6 +22,11 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.hyeongwon.GeoMemoFrontend",
+      "permissions": [
+        "READ_MEDIA_IMAGES",
+        "READ_EXTERNAL_STORAGE",
+        "CAMERA"
+      ],
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyA-tR6iHp44OT7wa4Lx4Htdi1BqQx_okNM"
