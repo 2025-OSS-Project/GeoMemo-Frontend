@@ -19,11 +19,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { Magnetometer } from 'expo-sensors';
-import { Ionicons, FontAwesome, FontAwesome5, Entypo } from '@expo/vector-icons';
+import { Ionicons, FontAwesome, FontAwesome5, Entypo, MaterialIcons } from '@expo/vector-icons';
 import MapSection from './MapSection';
 import SlidePanel from './SlidePanel';
 import RouteBox from './RouteBox';
-import { getAllMemos, updateViewSettings, getCurrentUserInfo, recommendPlaces, getRecommendations } from '../../config/api';
+import { getAllMemos, updateViewSettings, getCurrentUserInfo, recommendPlaces, getRecommendations, getUserInsights } from '../../config/api';
 // MemoModal import 제거 - Profile의 memoView 사용
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -47,6 +47,9 @@ function Home() {
   const [isLoadingDestination, setIsLoadingDestination] = useState(false);
   const [recommendations, setRecommendations] = useState(null);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+  const [insights, setInsights] = useState(null);
+  const [isLoadingInsights, setIsLoadingInsights] = useState(false);
+  const [showInsightModal, setShowInsightModal] = useState(false);
   const hasCalledAPI = useRef(false); // API 호출 여부를 추적하는 ref
 
   // 슬라이드 애니메이션을 위한 변수들
@@ -452,13 +455,21 @@ function Home() {
     useCallback(() => {
       // 사용자 정보 가져오기
       const loadUserInfo = async () => {
+        console.log('🔍 loadUserInfo 호출됨');
+        console.log('userToken:', userToken ? '있음' : '없음');
+        console.log('myUser:', myUser);
+        
         if (userToken && !myUser) {
           try {
+            console.log('✅ getCurrentUserInfo API 호출 시작');
             const userInfo = await getCurrentUserInfo(userToken);
+            console.log('✅ 사용자 정보 받아옴:', userInfo);
             setMyUser(userInfo);
           } catch (error) {
             console.error('사용자 정보 로드 실패:', error);
           }
+        } else {
+          console.log('❌ 사용자 정보 로드 조건 불충족');
         }
       };
 
@@ -467,6 +478,11 @@ function Home() {
       // 홈 화면으로 돌아왔을 때 메모 데이터 새로 불러오기 (필터 변경이 아닌 경우에만)
       if (userToken && !route.params?.filterChanged) {
         fetchAllMemos();
+      }
+      
+      // 인사이트 데이터 가져오기
+      if (userToken && myUser?.id) {
+        fetchInsights();
       }
       
       // 홈 화면으로 돌아왔을 때 위치 정보 빠르게 업데이트
@@ -609,6 +625,54 @@ function Home() {
   const handleMemoManagerPress = useCallback(() => {
     navigation.navigate('MemoManager');
   }, [navigation]);
+
+  // 인사이트 가져오기
+  const fetchInsights = useCallback(async () => {
+    if (!userToken || !myUser?.id) return;
+    
+    try {
+      setIsLoadingInsights(true);
+      const insightsData = await getUserInsights(myUser.id, userToken);
+      setInsights(insightsData);
+    } catch (error) {
+      console.error('인사이트 로드 실패:', error);
+    } finally {
+      setIsLoadingInsights(false);
+    }
+  }, [userToken, myUser?.id]);
+
+  // 주간인사이트 클릭 시 프로필의 인사이트 탭으로 이동
+  const handleInsightsPress = useCallback(async () => {
+    console.log('🔍 handleInsightsPress 호출됨');
+    console.log('myUser:', myUser);
+    console.log('myUser?.id:', myUser?.id);
+    
+    try {
+      // myUser.id가 있으면 사용, 없으면 현재 사용자 정보에서 가져오기
+      let userId = myUser?.id;
+      
+      if (!userId && userToken) {
+        console.log('🔍 myUser.id가 없어서 getCurrentUserInfo API 호출');
+        const userInfo = await getCurrentUserInfo(userToken);
+        userId = userInfo?.user_id;
+        console.log('✅ API에서 가져온 userId:', userId);
+      }
+      
+      if (userId) {
+        console.log('✅ MyProfile로 네비게이션 시작');
+        navigation.navigate('MyProfile', { 
+          activeTab: 'insight',
+          refreshInsights: true 
+        });
+      } else {
+        console.log('❌ userId를 가져올 수 없음');
+        Alert.alert('오류', '사용자 정보를 가져올 수 없습니다.');
+      }
+    } catch (error) {
+      console.error('❌ handleInsightsPress 오류:', error);
+      Alert.alert('오류', '네비게이션 중 오류가 발생했습니다.');
+    }
+  }, [navigation, myUser?.id, userToken]);
 
 
 
@@ -785,9 +849,24 @@ function Home() {
         onPressMemo={handleMemoPress}
       />
 
-      <View style={styles.topBar}>
+      <TouchableOpacity 
+        style={styles.topBar} 
+        onPress={() => {
+          console.log('🔍 주간인사이트 TouchableOpacity 클릭됨');
+          handleInsightsPress();
+        }}
+        activeOpacity={0.7}
+      >
         <Text style={styles.moodText}>주간 인사이트</Text>
-      </View>
+        <View style={styles.insightRow}>
+          <Text style={styles.insightContent} numberOfLines={1} ellipsizeMode="tail">
+            {insights?.content || '자신의 위치에서 메모를 생성하여 인사이트를 만드세요!'}
+          </Text>
+          <TouchableOpacity onPress={() => setShowInsightModal(true)}>
+            <MaterialIcons name="expand-more" size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
 
       <RouteBox
         routeSlideAnim={routeSlideAnim}
@@ -823,6 +902,23 @@ function Home() {
         userToken={userToken} // 사용자 토큰 추가
         onMemosUpdate={setMemos} // 메모 업데이트 콜백 추가
       />
+
+      {/* 인사이트 모달 */}
+      {showInsightModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.insightModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>주간 인사이트</Text>
+              <TouchableOpacity onPress={() => setShowInsightModal(false)}>
+                <MaterialIcons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalContent}>
+              {insights?.content || '자신의 위치에서 메모를 생성하여 인사이트를 만드세요!'}
+            </Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -833,18 +929,43 @@ export default React.memo(Home);
 const styles = StyleSheet.create({
   topBar: {
     position: 'absolute',
-    top: 65, // 70 → 100으로 조정하여 상태바 아래에 위치
+    top: 55, // 70 → 100으로 조정하여 상태바 아래에 위치
     alignSelf: 'center',
     backgroundColor: 'white',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 10,
     elevation: 5,
     zIndex: 10, // 지도 위에 표시되도록 zIndex 추가
+    alignItems: 'center',
+    minWidth: 160,
+    maxWidth: 280,
   },
   moodText: {
     fontSize: 14,
     fontWeight: '500',
+    marginBottom: 2,
+  },
+  insightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  insightContent: {
+    fontSize: 11,
+    color: '#666',
+    textAlign: 'left',
+    flex: 1,
+    marginRight: 6,
+    lineHeight: 14,
+    maxWidth: 220,
+  },
+  noInsightText: {
+    fontSize: 9,
+    color: '#999',
+    textAlign: 'center',
+    maxWidth: 260,
   },
 
   myMemoManage: {
@@ -920,5 +1041,40 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#333',
     marginTop: 16,
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  insightModal: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 20,
+    margin: 20,
+    maxWidth: '90%',
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  modalContent: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#666',
   },
 });

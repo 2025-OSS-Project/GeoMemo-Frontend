@@ -2521,3 +2521,69 @@ export const getRecommendations = async (userId, userToken = null) => {
     throw error;
   }
 };
+
+// 사용자 인사이트 가져오기 (GET 요청)
+export const getUserInsights = async (userId, userToken = null) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {};
+    
+    // 토큰이 있을 때만 Authorization 헤더 추가
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+    }
+
+    const url = `${config.baseURL}/mq/insights/${userId}`;
+
+    console.log('사용자 인사이트 GET 요청:', { 
+      url, 
+      userId, 
+      hasToken: !!userToken 
+    });
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('사용자 인사이트 에러 응답:', errorData);
+         
+        // 422 Validation Error 처리
+        if (response.status === 422 && errorData.detail) {
+          if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail.map(err => err.msg || err.message || 'Validation error').join(', ');
+          } else {
+            errorMessage = errorData.detail;
+          }
+        } else {
+          errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+        }
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          console.error('사용자 인사이트 에러 텍스트:', errorText);
+          errorMessage = `HTTP error! status: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    console.log('✅ 사용자 인사이트 GET 요청 성공:', data);
+    return data;
+  } catch (error) {
+    console.error('❌ 사용자 인사이트 GET 요청 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/mq/insights/${userId}`);
+    throw error;
+  }
+};

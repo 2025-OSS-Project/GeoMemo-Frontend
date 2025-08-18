@@ -134,7 +134,14 @@ export default function MyProfile() {
         // 파라미터 초기화
         navigation.setParams({ refreshData: undefined });
       }
-    }, [route.params?.refreshData])
+      
+      // Home에서 주간인사이트 클릭으로 이동한 경우 인사이트 탭 활성화
+      if (route.params?.activeTab === 'insight') {
+        setActiveTab('insight');
+        // 파라미터 초기화
+        navigation.setParams({ activeTab: undefined });
+      }
+    }, [route.params?.refreshData, route.params?.activeTab])
   );
 
   // 사용자 정보 로드
