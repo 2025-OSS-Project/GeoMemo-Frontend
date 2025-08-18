@@ -11,7 +11,8 @@ import {
   Linking,
   FlatList,
   Image,
-  StatusBar
+  StatusBar,
+  Alert
 } from 'react-native';
 import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,7 +23,7 @@ import { Ionicons, FontAwesome, FontAwesome5, Entypo } from '@expo/vector-icons'
 import MapSection from './MapSection';
 import SlidePanel from './SlidePanel';
 import RouteBox from './RouteBox';
-import { getAllMemos, updateViewSettings, getCurrentUserInfo } from '../../config/api';
+import { getAllMemos, updateViewSettings, getCurrentUserInfo, recommendPlaces, getRecommendations } from '../../config/api';
 // MemoModal import 제거 - Profile의 memoView 사용
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -42,7 +43,64 @@ function Home() {
   const [mapBounds, setMapBounds] = useState(null);
   const [userToken, setUserToken] = useState(null);
   const [isLoadingMemos, setIsLoadingMemos] = useState(false);
-  
+  const [destination, setDestination] = useState(null);
+  const [isLoadingDestination, setIsLoadingDestination] = useState(false);
+  const [recommendations, setRecommendations] = useState(null);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+  const hasCalledAPI = useRef(false); // API 호출 여부를 추적하는 ref
+
+  // 슬라이드 애니메이션을 위한 변수들
+  const routeSlideAnim = useRef(new Animated.Value(0)).current; // 기본적으로 보이는 상태로 변경
+  const routeSlideAnimValue = useRef(0);
+
+  // RouteBox 슬라이드 애니메이션을 위한 panResponder (수정된 버전)
+  const routePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // 수평 움직임이 수직 움직임보다 클 때만 반응
+        return Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+      },
+      onPanResponderGrant: () => {
+        // 현재 애니메이션 값으로 시작
+        routeSlideAnim.setValue(routeSlideAnimValue.current);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // 드래그 방향에 따라 열기/닫기 (핸들바가 항상 보이도록 최소값 조정)
+        const currentValue = routeSlideAnimValue.current;
+        const newValue = Math.max(-180, Math.min(0, currentValue + gestureState.dx)); // -200에서 -180으로 변경
+        routeSlideAnim.setValue(newValue);
+        routeSlideAnimValue.current = newValue;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const velocity = gestureState.vx;
+        const distance = gestureState.dx;
+        const currentValue = routeSlideAnimValue.current;
+        
+        // 오른쪽으로 드래그하면 열기, 왼쪽으로 드래그하면 닫기
+        if (velocity > 0.3 || distance > 30 || currentValue > -100) {
+          // 열기 애니메이션
+          Animated.timing(routeSlideAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: false,
+          }).start(() => {
+            routeSlideAnimValue.current = 0;
+          });
+        } else {
+          // 닫기 애니메이션 (핸들바가 항상 보이도록 최소값 조정)
+          Animated.timing(routeSlideAnim, {
+            toValue: -180,
+            duration: 200,
+            useNativeDriver: false,
+          }).start(() => {
+            routeSlideAnimValue.current = -180;
+          });
+        }
+      },
+    })
+  ).current;
+
   // 스피너 애니메이션을 위한 Animated Value
   const spinValue = useRef(new Animated.Value(0)).current;
 
@@ -82,17 +140,72 @@ function Home() {
 
   const mapRef = useRef(null);
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT - SLIDE_HEIGHT)).current;
-  const routeSlideAnim = useRef(new Animated.Value(0)).current;
-  const routeSlideAnimValue = useRef(0); // 현재 값을 추적하기 위한 ref
-  const [routeVisible, setRouteVisible] = useState(true);
+
 
   // AI 추천 위치(위도, 경도) state
-  const [destination, setDestination] = useState(null);
+  // const [destination, setDestination] = useState(null); // 이 부분은 위에서 추가됨
+  // const [isLoadingDestination, setIsLoadingDestination] = useState(false); // 이 부분은 위에서 추가됨
 
-  // AI 추천 위치 설정 (즉시 설정)
-  React.useEffect(() => {
-    setDestination({ latitude: 37.5665, longitude: 126.9780 });
-  }, []);
+  // AI 추천 위치 설정 (API 호출)
+  const fetchRecommendedDestination = useCallback(async () => {
+    if (!location || isLoadingDestination) return;
+    
+    try {
+      setIsLoadingDestination(true);
+      console.log('장소 추천 API 호출 시작:', { latitude: location.latitude, longitude: location.longitude });
+      
+      // POST API 호출만 수행 (실제 장소 정보는 별도 GET API에서 받아옴)
+      await recommendPlaces(location.latitude, location.longitude, 3, userToken);
+      
+      // API 호출 성공 시 기본값으로 destination 설정
+      setDestination({ latitude: 37.5665, longitude: 126.9780 });
+      console.log('✅ 장소 추천 API 호출 완료, 기본값으로 destination 설정');
+      
+    } catch (error) {
+      console.error('❌ 장소 추천 API 호출 실패:', error.message);
+      // API 실패 시에도 기본값 설정
+      setDestination({ latitude: 37.5665, longitude: 126.9780 });
+    } finally {
+      setIsLoadingDestination(false);
+    }
+  }, [location, userToken, isLoadingDestination]);
+
+  // 추천 장소 목록 가져오기 (GET)
+  const fetchRecommendations = useCallback(async () => {
+    if (!userToken || isLoadingRecommendations) return;
+    
+    try {
+      setIsLoadingRecommendations(true);
+      console.log('추천 장소 목록 가져오기 시작');
+      
+      // userId는 임시로 1로 설정 (실제로는 사용자 정보에서 가져와야 함)
+      const data = await getRecommendations(1, userToken);
+      setRecommendations(data);
+      console.log('✅ 추천 장소 목록 가져오기 완료:', data);
+      
+    } catch (error) {
+      console.error('❌ 추천 장소 목록 가져오기 실패:', error.message);
+      setRecommendations(null);
+    } finally {
+      setIsLoadingRecommendations(false);
+    }
+  }, [userToken, isLoadingRecommendations]);
+
+  // 위치가 변경되었을 때만 장소 추천 API 호출 (한 번만 실행)
+  useEffect(() => {
+    if (location && location.latitude && location.longitude && userToken && !hasCalledAPI.current) {
+      hasCalledAPI.current = true; // API 호출 플래그 설정
+      console.log('📍 위치 기반 API 호출 시작 (한 번만)');
+      
+      // POST API 호출
+      fetchRecommendedDestination();
+      
+      // POST API 호출 후 잠시 기다린 후 GET API 호출
+      setTimeout(() => {
+        fetchRecommendations();
+      }, 1000);
+    }
+  }, [location, userToken]); // location과 userToken이 모두 준비되었을 때 한 번만 실행
 
   // API 함수들 (현재는 사용하지 않음 - 즉시 반환)
   const fetchCurrentUser = useCallback(() => {
@@ -193,44 +306,7 @@ function Home() {
     })
   ).current;
 
-  const routePanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
-      },
-      onPanResponderGrant: () => {
-        routeSlideAnim.setValue(routeSlideAnimValue.current);
-      },
-      onPanResponderMove: (_, gestureState) => {
-        const newValue = Math.max(-200, Math.min(0, routeSlideAnimValue.current + gestureState.dx));
-        routeSlideAnim.setValue(newValue);
-        routeSlideAnimValue.current = newValue;
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        const velocity = gestureState.vx;
-        const distance = gestureState.dx;
-        
-        if (velocity > 0.5 || distance > 50) {
-          Animated.timing(routeSlideAnim, {
-            toValue: 0,
-            duration: 200,
-            useNativeDriver: false,
-          }).start(() => {
-            routeSlideAnimValue.current = 0;
-          });
-        } else {
-          Animated.timing(routeSlideAnim, {
-            toValue: -200,
-            duration: 200,
-            useNativeDriver: false,
-          }).start(() => {
-            routeSlideAnimValue.current = -200;
-          });
-        }
-      },
-    })
-  ).current;
+
 
   // 초기화 로직을 극도로 최적화하여 즉시 화면 표시
   useEffect(() => {
@@ -713,13 +789,14 @@ function Home() {
         <Text style={styles.moodText}>주간 인사이트</Text>
       </View>
 
-      {routeVisible && (
-        <RouteBox
-          routeSlideAnim={routeSlideAnim}
-          routePanResponder={routePanResponder}
-          destination={destination}
-        />
-      )}
+      <RouteBox
+        routeSlideAnim={routeSlideAnim}
+        routePanResponder={routePanResponder}
+        destination={destination}
+        isLoadingDestination={isLoadingDestination}
+        recommendations={recommendations}
+        isLoadingRecommendations={isLoadingRecommendations}
+      />
 
       <TouchableOpacity style={styles.myMemoManage} onPress={handleMemoManagerPress}>
         <FontAwesome name="navicon" size={24} color="black" />
