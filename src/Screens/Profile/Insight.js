@@ -452,8 +452,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   insightText: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 14, // 16 → 14로 줄임
+    lineHeight: 20, // 24 → 20으로 줄임
     color: '#333',
   },
   pendingSection: {
