@@ -78,8 +78,8 @@ const ProfileImageWithPresignedUrl = ({ profileUrl }) => {
     <Image
       source={{ uri: presignedUrl }}
       style={styles.profileImage}
-      onError={(e) => console.log('🖼️ 이미지 로드 실패:', e.nativeEvent)}
-      onLoad={() => console.log('🖼️ 이미지 로드 성공')}
+      onError={(e) => console.log('이미지 로드 실패:', e.nativeEvent)}
+      onLoad={() => console.log('이미지 로드 성공')}
     />
   );
 };
@@ -134,7 +134,14 @@ export default function MyProfile() {
         // 파라미터 초기화
         navigation.setParams({ refreshData: undefined });
       }
-    }, [route.params?.refreshData])
+      
+      // Home에서 주간인사이트 클릭으로 이동한 경우 인사이트 탭 활성화
+      if (route.params?.activeTab === 'insight') {
+        setActiveTab('insight');
+        // 파라미터 초기화
+        navigation.setParams({ activeTab: undefined });
+      }
+    }, [route.params?.refreshData, route.params?.activeTab])
   );
 
   // 사용자 정보 로드
@@ -259,7 +266,7 @@ export default function MyProfile() {
               navigation.navigate('FollowManage', { initialTab: 'followers', userNickname: userInfo?.user_nickname || '사용자' });
             }}>
               <Text style={styles.followNumber}>{userInfo?.follower_count || 0}</Text>
-              <Text style={styles.followLabel}>Followers</Text>
+              <Text style={styles.followLabel}>Follower</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.followBox} onPress={async () => {
               await refreshFollowCounts();
@@ -293,7 +300,18 @@ export default function MyProfile() {
 
       {/* 콘텐츠 영역 */}
       <View style={styles.contentArea}>
-        {activeTab === 'scrap' ? <ScrapMemo /> : <Insight />}
+        {activeTab === 'scrap' ? (
+          <ScrapMemo />
+        ) : (
+          userInfo?.user_id ? (
+            <Insight profileUserId={userInfo.user_id} />
+          ) : (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#007AFF" />
+              <Text style={styles.loadingText}>사용자 정보를 불러오는 중...</Text>
+            </View>
+          )
+        )}
       </View>
       
       {/* 홈 버튼과 검색 버튼 */}

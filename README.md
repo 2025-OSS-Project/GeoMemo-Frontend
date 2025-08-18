@@ -1,204 +1,275 @@
-# GeoMemo-Frontend (Expo / React Native)
+# GeoMemo - 위치 기반 메모 앱
 
-위치·시간과 연동된 감정/메모 데이터를 기록하고 시각화하는 **모바일 프런트엔드 앱**입니다. Expo(Managed) 워크플로를 사용합니다.
+GeoMemo는 사용자가 특정 위치에 메모를 남기고, 지도를 통해 메모를 탐색할 수 있는 React Native 기반 모바일 애플리케이션입니다.
 
 ## 주요 기능
 
-* 장소/시간/감정 기록 화면
-* 타임라인·지도 기반 시각화
-* 백엔드(FastAPI 등)와 REST API 연동
-* EAS Build를 통한 Android/iOS 빌드
+### 위치 기반 메모
+- 현재 위치에 메모 작성 및 저장
+- GPS 좌표 기반 메모 위치 지정
+- 지도에서 메모 위치 시각화
 
----
+### 지도 기능
+- React Native Maps를 활용한 인터랙티브 지도
+- Google Maps API 연동
+- 지도 경계 추적 및 백엔드 동기화
 
-## 프로젝트 구조
+### 소셜 기능
+- 사용자 프로필 관리
+- 팔로우/팔로잉 시스템
+- 공개/비공개 메모 설정
+- 다른 사용자의 메모 스크랩
 
-```
-.
-├─ android/
-├─ assets/
-├─ src/
-├─ App.js
-├─ app.json
-├─ eas.json
-├─ index.js
-└─ package.json
-```
+### 사용자 인터페이스
+- 슬라이드 패널을 통한 직관적인 네비게이션
+- 애니메이션 효과가 적용된 UI
+- 반응형 디자인
 
----
+## 기술 스택
 
-## 사전 준비
+### 프론트엔드
+- **React Native** 0.79.5
+- **Expo** 53.0.20
+- **React Navigation** 7.x
+- **React Native Maps** 1.20.1
 
-* Node.js LTS(권장 v18+), npm 또는 pnpm
-* Android Studio(에뮬레이터) / macOS의 경우 Xcode(iOS 시뮬레이터)
-* (선택) EAS CLI: `npm i -g eas-cli`
+### 주요 라이브러리
+- **Axios** - HTTP 클라이언트
+- **AsyncStorage** - 로컬 데이터 저장
+- **Expo Location** - 위치 서비스
+- **Expo Sensors** - 센서 데이터 (자기장계)
+- **Expo Image Picker** - 이미지 선택
+- **React Native AWS3** - S3 업로드
 
----
+### 개발 도구
+- **Metro** - 번들러
+- **Babel** - JavaScript 컴파일러
 
-## 빠른 시작
+## 플랫폼 지원
 
+- **Android** - API 21+ 지원
+- **Web** - React Native Web을 통한 웹 지원
+
+## 시작하기
+
+### 필수 요구사항
+- Node.js 18+
+- Expo CLI
+- Android Studio (Android 개발용)
+
+### 설치 및 실행
+
+1. **저장소 클론**
 ```bash
-# 1) 클론 & 설치
-git clone https://github.com/2025-OSS-Project/GeoMemo-Frontend.git
+git clone [repository-url]
 cd GeoMemo-Frontend
+```
+
+2. **의존성 설치**
+```bash
 npm install
-
-# 2) 개발 서버 실행
-npx expo start
-
-# 3) 디바이스 실행
-# 안드로이드 에뮬레이터
-npx expo run:android
-# iOS 시뮬레이터(macOS)
-npx expo run:ios
 ```
 
-> 실기기에서 테스트 시, PC와 기기가 같은 네트워크에 있어야 합니다.
-
----
-
-## 환경 변수(.env) 및 백엔드 연결
-
-### 권장: `EXPO_PUBLIC_` 접두 사용
-
-아래 파일을 루트에 생성하세요.
-에뮬레이터에서 호스트(개발 PC)의 `localhost`는 **`10.0.2.2`** 입니다.
-
-`./.env.development`
-
-```env
-EXPO_PUBLIC_API_BASE=http://10.0.2.2:8000
+3. **개발 서버 시작**
+```bash
+npm start
 ```
 
-`./.env.production`
+4. **플랫폼별 실행**
+```bash
+# Android
+npm run android
 
-```env
-EXPO_PUBLIC_API_BASE=https://api.example.com
+# Web
+npm run web
 ```
 
-코드 사용 예시 (`src/api/client.ts`)
+## 환경 설정
 
-```ts
-export const API_BASE =
-  process.env.EXPO_PUBLIC_API_BASE ?? "http://10.0.2.2:8000";
-```
-
-> 실기기 테스트 시엔 `http://<개발PC LAN IP>:8000`으로 변경하세요.
-
----
-
-## NPM 스크립트(권장)
-
-`package.json`에 아래를 추가하면 편합니다.
+### API 키 설정
+`app.json`에서 Google Maps API 키를 설정해야 합니다:
 
 ```json
 {
-  "scripts": {
-    "start": "expo start",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
-    "clean": "expo start --clear"
+  "expo": {
+    "android": {
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+        }
+      }
+    }
   }
 }
 ```
 
----
+### 환경 변수
+`.env` 파일을 생성하여 필요한 환경 변수를 설정하세요:
 
-## 빌드 & 배포(EAS)
+```env
+API_BASE_URL=your_api_base_url
+AWS_ACCESS_KEY=your_aws_access_key
+AWS_SECRET_KEY=your_aws_secret_key
+```
 
+## 프로젝트 구조
+
+```
+GeoMemo-Frontend/
+├── android/                 # Android 네이티브 코드
+├── assets/                  # 앱 아이콘 및 이미지
+├── src/                     # 소스 코드
+│   ├── config/             # API 설정 및 유틸리티
+│   ├── Navigation/         # 네비게이션 설정
+│   ├── Screens/            # 화면 컴포넌트
+│   │   ├── Auth/          # 인증 관련 화면
+│   │   ├── Main/          # 메인 화면 (지도, 홈)
+│   │   ├── MemoManage/    # 메모 관리 화면
+│   │   ├── Profile/       # 프로필 및 사용자 관리
+│   │   └── Setting/       # 설정 화면
+│   └── utils/             # 유틸리티 함수
+├── App.js                  # 메인 앱 컴포넌트
+├── app.json               # Expo 설정
+├── eas.json               # EAS Build 설정
+├── index.js               # 앱 진입점
+├── package.json           # 의존성 및 스크립트
+└── README.md              # 프로젝트 문서
+```
+
+## 주요 화면
+
+### 인증
+- **Login.js** - 사용자 로그인
+- **SignUp.js** - 회원가입
+- **EmailVerification.js** - 이메일 인증
+
+### 메인 기능
+- **Home.js** - 메인 화면 (지도 + 메모 목록)
+- **MapSection.js** - 지도 컴포넌트
+- **AddMemo.js** - 메모 작성
+
+### 메모 관리
+- **AllMemo.js** - 전체 메모 목록
+- **ThisMemo.js** - 개별 메모 상세보기
+- **MemoManager.js** - 메모 관리
+
+### 프로필
+- **MyProfile.js** - 내 프로필
+- **OtherProfile.js** - 다른 사용자 프로필
+- **ScrapMemo.js** - 스크랩한 메모
+
+## API 구조
+
+### 백엔드 연동
+- CloudFront를 통한 CDN 서비스
+- RESTful API 엔드포인트
+- JWT 기반 인증
+- S3 이미지 업로드 지원
+
+### 주요 API
+- `POST /api/memo/` - 메모 생성
+- `GET /api/memo/` - 메모 조회
+- `POST /api/map-bounds` - 지도 경계 전송
+
+## 개발 가이드
+
+### 코드 스타일
+- 함수형 컴포넌트 사용
+- React Hooks 활용
+- ES6+ 문법 사용
+- 일관된 네이밍 컨벤션 준수
+
+### 상태 관리
+- React의 useState, useEffect 등 기본 Hooks 사용
+- AsyncStorage를 통한 로컬 데이터 저장
+- Context API 활용 고려
+
+### 네비게이션
+- React Navigation 7.x 사용
+- 스택 네비게이션과 탭 네비게이션 조합
+- 화면 간 데이터 전달 시 route.params 활용
+
+### 에러 처리
+- try-catch 구문을 통한 적절한 에러 핸들링
+- 사용자에게 명확한 에러 메시지 제공
+- 네트워크 오류 및 권한 오류 처리
+
+## 테스트 방법
+
+### 개발 환경 테스트
 ```bash
-# 1) 로그인(또는 EXPO_TOKEN 사용)
-eas login
+# 개발 서버 시작
+npm start
 
-# 2) 빌드 설정 초기화(최초 1회)
-eas build:configure
+# Android 에뮬레이터에서 실행
+npm run android
 
-# 3) 프로덕션 빌드
-eas build --platform android --profile production
-eas build --platform ios --profile production
+# 웹 브라우저에서 실행
+npm run web
 ```
 
-> 서명/프로파일은 EAS 가이드에 따라 1회 설정해 두면 이후 자동화가 수월합니다.
+### 실기기 테스트
+1. Expo Go 앱 설치 (Google Play Store)
+2. 개발 PC와 같은 Wi-Fi 네트워크 연결
+3. QR 코드 스캔하여 앱 실행
 
----
+### 주요 테스트 포인트
+- 위치 권한 요청 및 처리
+- 지도 로딩 및 마커 표시
+- 메모 작성 및 저장
+- 사용자 인증 플로우
+- 이미지 업로드 기능
 
-## GitHub Actions — EAS 빌드 파이프라인(옵션)
+## 트러블슈팅
 
-1. GitHub 저장소 **Settings → Secrets and variables → Actions → New repository secret**에서
-   `EXPO_TOKEN`(Expo 계정 토큰) 등록
-2. 아래 워크플로 파일 생성
+### 일반적인 문제들
 
-`.github/workflows/eas-build.yml`
-
-```yaml
-name: EAS Build (Frontend)
-
-on:
-  push:
-    branches: [ main, dev ]
-  pull_request:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.npm
-            ~/.cache/expo
-            ~/.cache/eas
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: ${{ runner.os }}-npm-
-
-      - name: Setup Expo & EAS
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - run: npm ci
-
-      # 필요 시 .env 파일을 환경별로 주입하거나, EAS Vars를 사용하세요.
-      # 예: eas env:pull --environment preview --path .env
-
-      - name: EAS Build (Android)
-        run: eas build --platform android --profile preview --non-interactive --wait
-
-      # iOS도 함께 빌드하려면 아래 주석 해제
-      # - name: EAS Build (iOS)
-      #   run: eas build --platform ios --profile preview --non-interactive --wait
+**Metro 번들러 오류**
+```bash
+# 캐시 클리어
+npx expo start --clear
 ```
 
+**Android 빌드 오류**
+```bash
+# Gradle 캐시 클리어
+cd android
+./gradlew clean
+cd ..
+```
+
+**의존성 충돌**
+```bash
+# node_modules 삭제 후 재설치
+rm -rf node_modules
+npm install
+```
+
+**위치 권한 문제**
+- Android Manifest에서 권한 확인
+- 런타임 권한 요청 코드 확인
+
+### 디버깅 팁
+- React Native Debugger 사용
+- console.log를 통한 로깅
+- Expo DevTools 활용
+- Chrome DevTools로 웹 디버깅
+
+## 배포
+
+### EAS Build
+```bash
+# Android APK 빌드
+eas build --platform android
+```
+
+### 앱 스토어 배포
+- Google Play Store
+
+## 문의
+
+프로젝트에 대한 문의사항이 있으시면 이슈를 생성해 주세요.
+
 ---
 
-## 트러블슈팅 요약
-
-* **Android 에뮬레이터에서 백엔드 접속 실패**: `localhost` 대신 `10.0.2.2` 사용
-* **포트 충돌/캐시 문제**: `npm run clean` 또는 `expo start --clear`
-* **실기기 연결 불가**: PC와 기기를 동일 Wi-Fi에 연결, 방화벽/회사망 프록시 확인
-
----
-
-## 라이선스
-
-이 프로젝트는 조직 정책에 따라 라이선스를 명시합니다. (`LICENSE` 파일 참고)
-
----
-
-## 기여
-
-이슈 생성 → 브랜치(`feature/*`) → PR → 리뷰 승인 후 머지
-PR 템플릿/코드 스타일/커밋 컨벤션은 팀 규칙에 따릅니다.
-
----
-
-필요하시면 다음 순서로 **Backend → AI**도 같은 방식으로 “복붙용 README”를 만들어 드리겠습니다.
+**GeoMemo** - 위치와 함께하는 스마트한 메모 앱

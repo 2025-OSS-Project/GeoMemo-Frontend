@@ -6,7 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import * as ExpoImagePicker from 'expo-image-picker';
 // react-native-image-picker도 설치되어 있어서 별칭 사용
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { generatePresignedUrl, updateProfileImage } from '../../config/api';
+import { generatePresignedUrl, updateProfileImage, setDefaultProfileImage } from '../../config/api';
 import { uploadWithXHR } from '../../utils/s3Upload';
 
 export default function EditProfile() {
@@ -84,6 +84,51 @@ export default function EditProfile() {
     }
   };
 
+  // 기본 이미지로 변경하는 함수
+  const handleSetDefaultImage = async () => {
+    try {
+      const userToken = await AsyncStorage.getItem('userToken');
+      if (!userToken) {
+        Alert.alert('오류', '로그인이 필요합니다.');
+        navigation.navigate('Login');
+        return;
+      }
+
+      Alert.alert(
+        '기본 이미지로 변경',
+        '프로필 사진을 기본 이미지로 변경하시겠습니까?',
+        [
+          { text: '취소', style: 'cancel' },
+          {
+            text: '변경',
+            onPress: async () => {
+              try {
+                await setDefaultProfileImage(userToken);
+                setSelectedImage(null); // 선택된 이미지 초기화
+                Alert.alert(
+                  '성공',
+                  '프로필 사진이 기본 이미지로 변경되었습니다!',
+                  [
+                    {
+                      text: '확인',
+                      onPress: () => navigation.goBack()
+                    }
+                  ]
+                );
+              } catch (error) {
+                console.error('기본 이미지 설정 실패:', error);
+                Alert.alert('오류', '기본 이미지로 변경 중 오류가 발생했습니다.');
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('기본 이미지 설정 실패:', error);
+      Alert.alert('오류', '기본 이미지로 변경 중 오류가 발생했습니다.');
+    }
+  };
+
   // 이미지 선택 옵션 표시
   const showImagePicker = () => {
     console.log('이미지 선택 옵션 표시');
@@ -106,10 +151,14 @@ export default function EditProfile() {
           },
         },
         {
-          text: '취소',
-          style: 'cancel',
+          text: '기본 이미지',
+          onPress: () => {
+            console.log('기본 이미지로 변경 선택됨');
+            handleSetDefaultImage();
+          },
         },
-      ]
+      ],
+      { cancelable: true }
     );
   };
 

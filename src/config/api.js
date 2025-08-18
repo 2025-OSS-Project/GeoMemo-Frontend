@@ -2361,3 +2361,229 @@ export const updateProfileImage = async (profileImageUrl, userToken) => {
     throw error;
   }
 };
+
+// 프로필 이미지를 기본 이미지로 변경하는 함수
+export const setDefaultProfileImage = async (userToken) => {
+  try {
+    const headers = {
+      'Authorization': `Bearer ${userToken}`,
+    };
+
+    const response = await axios.post('https://dco69dhctdpt.cloudfront.net/api/user/set/profile-image-default', {}, { headers });
+
+    const result = response.data;
+    console.log('✅ 기본 프로필 이미지 설정 성공:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ 기본 프로필 이미지 설정 실패:', error.message);
+    throw error;
+  }
+};
+
+// 장소 추천 함수 (POST 요청만 수행)
+export const recommendPlaces = async (userLatitude, userLongitude, top = 3, userToken = null) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    
+    // 토큰이 있을 때만 Authorization 헤더 추가
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+    }
+
+    // 쿼리 파라미터 구성 (API 명세서에 맞춤)
+    const queryParams = new URLSearchParams({
+      user_latitude: userLatitude.toString(),
+      user_longitude: userLongitude.toString(),
+      top: top.toString()
+    });
+
+    const url = `${config.baseURL}/mq/recommend?${queryParams}`;
+
+    console.log('장소 추천 POST 요청:', { 
+      url, 
+      userLatitude, 
+      userLongitude, 
+      top, 
+      hasToken: !!userToken 
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('장소 추천 에러 응답:', errorData);
+         
+        // 422 Validation Error 처리
+        if (response.status === 422 && errorData.detail) {
+          if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail.map(err => err.msg || err.message || 'Validation error').join(', ');
+          } else {
+            errorMessage = errorData.detail;
+          }
+        } else {
+          errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+        }
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          console.error('장소 추천 에러 텍스트:', errorText);
+          errorMessage = `HTTP error! status: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    console.log('✅ 장소 추천 POST 요청 성공');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ 장소 추천 POST 요청 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/mq/recommend`);
+    throw error;
+  }
+};
+
+// 추천 장소 목록 가져오기 (GET 요청)
+export const getRecommendations = async (userId, userToken = null) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {};
+    
+    // 토큰이 있을 때만 Authorization 헤더 추가
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+    }
+
+    const url = `${config.baseURL}/mq/recommendations/${userId}`;
+
+    console.log('추천 장소 목록 GET 요청:', { 
+      url, 
+      userId, 
+      hasToken: !!userToken 
+    });
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('추천 장소 목록 에러 응답:', errorData);
+         
+        // 422 Validation Error 처리
+        if (response.status === 422 && errorData.detail) {
+          if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail.map(err => err.msg || err.message || 'Validation error').join(', ');
+          } else {
+            errorMessage = errorData.detail;
+          }
+        } else {
+          errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+        }
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          console.error('추천 장소 목록 에러 텍스트:', errorText);
+          errorMessage = `HTTP error! status: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    console.log('✅ 추천 장소 목록 GET 요청 성공:', data);
+    return data;
+  } catch (error) {
+    console.error('❌ 추천 장소 목록 GET 요청 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/mq/recommendations/${userId}`);
+    throw error;
+  }
+};
+
+// 사용자 인사이트 가져오기 (GET 요청)
+export const getUserInsights = async (userId, userToken = null) => {
+  const config = getApiConfig();
+  
+  try {
+    const headers = {};
+    
+    // 토큰이 있을 때만 Authorization 헤더 추가
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+    }
+
+    const url = `${config.baseURL}/mq/insights/${userId}`;
+
+    console.log('사용자 인사이트 GET 요청:', { 
+      url, 
+      userId, 
+      hasToken: !!userToken 
+    });
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('사용자 인사이트 에러 응답:', errorData);
+         
+        // 422 Validation Error 처리
+        if (response.status === 422 && errorData.detail) {
+          if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail.map(err => err.msg || err.message || 'Validation error').join(', ');
+          } else {
+            errorMessage = errorData.detail;
+          }
+        } else {
+          errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
+        }
+      } catch (parseError) {
+        // JSON 파싱 실패 시 텍스트로 읽기
+        try {
+          const errorText = await response.text();
+          console.error('사용자 인사이트 에러 텍스트:', errorText);
+          errorMessage = `HTTP error! status: ${errorText}`;
+        } catch (textError) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    console.log('✅ 사용자 인사이트 GET 요청 성공:', data);
+    return data;
+  } catch (error) {
+    console.error('❌ 사용자 인사이트 GET 요청 실패:', error.message);
+    console.error('API 엔드포인트:', `${config.baseURL}/mq/insights/${userId}`);
+    throw error;
+  }
+};

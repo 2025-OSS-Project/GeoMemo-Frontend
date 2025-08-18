@@ -11,18 +11,19 @@ import {
   Linking,
   FlatList,
   Image,
-  StatusBar
+  StatusBar,
+  Alert
 } from 'react-native';
 import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { Magnetometer } from 'expo-sensors';
-import { Ionicons, FontAwesome, FontAwesome5, Entypo } from '@expo/vector-icons';
+import { Ionicons, FontAwesome, FontAwesome5, Entypo, MaterialIcons } from '@expo/vector-icons';
 import MapSection from './MapSection';
 import SlidePanel from './SlidePanel';
 import RouteBox from './RouteBox';
-import { getAllMemos, updateViewSettings, getCurrentUserInfo } from '../../config/api';
+import { getAllMemos, updateViewSettings, getCurrentUserInfo, recommendPlaces, getRecommendations, getUserInsights } from '../../config/api';
 // MemoModal import 제거 - Profile의 memoView 사용
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -42,7 +43,67 @@ function Home() {
   const [mapBounds, setMapBounds] = useState(null);
   const [userToken, setUserToken] = useState(null);
   const [isLoadingMemos, setIsLoadingMemos] = useState(false);
-  
+  const [destination, setDestination] = useState(null);
+  const [isLoadingDestination, setIsLoadingDestination] = useState(false);
+  const [recommendations, setRecommendations] = useState(null);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+  const [insights, setInsights] = useState(null);
+  const [isLoadingInsights, setIsLoadingInsights] = useState(false);
+  const [showInsightModal, setShowInsightModal] = useState(false);
+  const hasCalledAPI = useRef(false); // API 호출 여부를 추적하는 ref
+
+  // 슬라이드 애니메이션을 위한 변수들
+  const routeSlideAnim = useRef(new Animated.Value(0)).current; // 기본적으로 보이는 상태로 변경
+  const routeSlideAnimValue = useRef(0);
+
+  // RouteBox 슬라이드 애니메이션을 위한 panResponder (수정된 버전)
+  const routePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // 수평 움직임이 수직 움직임보다 클 때만 반응
+        return Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+      },
+      onPanResponderGrant: () => {
+        // 현재 애니메이션 값으로 시작
+        routeSlideAnim.setValue(routeSlideAnimValue.current);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // 드래그 방향에 따라 열기/닫기 (핸들바가 항상 보이도록 최소값 조정)
+        const currentValue = routeSlideAnimValue.current;
+        const newValue = Math.max(-180, Math.min(0, currentValue + gestureState.dx)); // -200에서 -180으로 변경
+        routeSlideAnim.setValue(newValue);
+        routeSlideAnimValue.current = newValue;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const velocity = gestureState.vx;
+        const distance = gestureState.dx;
+        const currentValue = routeSlideAnimValue.current;
+        
+        // 오른쪽으로 드래그하면 열기, 왼쪽으로 드래그하면 닫기
+        if (velocity > 0.3 || distance > 30 || currentValue > -100) {
+          // 열기 애니메이션
+          Animated.timing(routeSlideAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: false,
+          }).start(() => {
+            routeSlideAnimValue.current = 0;
+          });
+        } else {
+          // 닫기 애니메이션 (핸들바가 항상 보이도록 최소값 조정)
+          Animated.timing(routeSlideAnim, {
+            toValue: -180,
+            duration: 200,
+            useNativeDriver: false,
+          }).start(() => {
+            routeSlideAnimValue.current = -180;
+          });
+        }
+      },
+    })
+  ).current;
+
   // 스피너 애니메이션을 위한 Animated Value
   const spinValue = useRef(new Animated.Value(0)).current;
 
@@ -82,17 +143,72 @@ function Home() {
 
   const mapRef = useRef(null);
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT - SLIDE_HEIGHT)).current;
-  const routeSlideAnim = useRef(new Animated.Value(0)).current;
-  const routeSlideAnimValue = useRef(0); // 현재 값을 추적하기 위한 ref
-  const [routeVisible, setRouteVisible] = useState(true);
+
 
   // AI 추천 위치(위도, 경도) state
-  const [destination, setDestination] = useState(null);
+  // const [destination, setDestination] = useState(null); // 이 부분은 위에서 추가됨
+  // const [isLoadingDestination, setIsLoadingDestination] = useState(false); // 이 부분은 위에서 추가됨
 
-  // AI 추천 위치 설정 (즉시 설정)
-  React.useEffect(() => {
-    setDestination({ latitude: 37.5665, longitude: 126.9780 });
-  }, []);
+  // AI 추천 위치 설정 (API 호출)
+  const fetchRecommendedDestination = useCallback(async () => {
+    if (!location || isLoadingDestination) return;
+    
+    try {
+      setIsLoadingDestination(true);
+      console.log('장소 추천 API 호출 시작:', { latitude: location.latitude, longitude: location.longitude });
+      
+      // POST API 호출만 수행 (실제 장소 정보는 별도 GET API에서 받아옴)
+      await recommendPlaces(location.latitude, location.longitude, 3, userToken);
+      
+      // API 호출 성공 시 기본값으로 destination 설정
+      setDestination({ latitude: 37.5665, longitude: 126.9780 });
+      console.log('✅ 장소 추천 API 호출 완료, 기본값으로 destination 설정');
+      
+    } catch (error) {
+      console.error('❌ 장소 추천 API 호출 실패:', error.message);
+      // API 실패 시에도 기본값 설정
+      setDestination({ latitude: 37.5665, longitude: 126.9780 });
+    } finally {
+      setIsLoadingDestination(false);
+    }
+  }, [location, userToken, isLoadingDestination]);
+
+  // 추천 장소 목록 가져오기 (GET)
+  const fetchRecommendations = useCallback(async () => {
+    if (!userToken || isLoadingRecommendations) return;
+    
+    try {
+      setIsLoadingRecommendations(true);
+      console.log('추천 장소 목록 가져오기 시작');
+      
+      // userId는 임시로 1로 설정 (실제로는 사용자 정보에서 가져와야 함)
+      const data = await getRecommendations(1, userToken);
+      setRecommendations(data);
+      console.log('✅ 추천 장소 목록 가져오기 완료:', data);
+      
+    } catch (error) {
+      console.error('❌ 추천 장소 목록 가져오기 실패:', error.message);
+      setRecommendations(null);
+    } finally {
+      setIsLoadingRecommendations(false);
+    }
+  }, [userToken, isLoadingRecommendations]);
+
+  // 위치가 변경되었을 때만 장소 추천 API 호출 (한 번만 실행)
+  useEffect(() => {
+    if (location && location.latitude && location.longitude && userToken && !hasCalledAPI.current) {
+      hasCalledAPI.current = true; // API 호출 플래그 설정
+      console.log('📍 위치 기반 API 호출 시작 (한 번만)');
+      
+      // POST API 호출
+      fetchRecommendedDestination();
+      
+      // POST API 호출 후 잠시 기다린 후 GET API 호출
+      setTimeout(() => {
+        fetchRecommendations();
+      }, 1000);
+    }
+  }, [location, userToken]); // location과 userToken이 모두 준비되었을 때 한 번만 실행
 
   // API 함수들 (현재는 사용하지 않음 - 즉시 반환)
   const fetchCurrentUser = useCallback(() => {
@@ -193,44 +309,7 @@ function Home() {
     })
   ).current;
 
-  const routePanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
-      },
-      onPanResponderGrant: () => {
-        routeSlideAnim.setValue(routeSlideAnimValue.current);
-      },
-      onPanResponderMove: (_, gestureState) => {
-        const newValue = Math.max(-200, Math.min(0, routeSlideAnimValue.current + gestureState.dx));
-        routeSlideAnim.setValue(newValue);
-        routeSlideAnimValue.current = newValue;
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        const velocity = gestureState.vx;
-        const distance = gestureState.dx;
-        
-        if (velocity > 0.5 || distance > 50) {
-          Animated.timing(routeSlideAnim, {
-            toValue: 0,
-            duration: 200,
-            useNativeDriver: false,
-          }).start(() => {
-            routeSlideAnimValue.current = 0;
-          });
-        } else {
-          Animated.timing(routeSlideAnim, {
-            toValue: -200,
-            duration: 200,
-            useNativeDriver: false,
-          }).start(() => {
-            routeSlideAnimValue.current = -200;
-          });
-        }
-      },
-    })
-  ).current;
+
 
   // 초기화 로직을 극도로 최적화하여 즉시 화면 표시
   useEffect(() => {
@@ -376,13 +455,21 @@ function Home() {
     useCallback(() => {
       // 사용자 정보 가져오기
       const loadUserInfo = async () => {
+        console.log('🔍 loadUserInfo 호출됨');
+        console.log('userToken:', userToken ? '있음' : '없음');
+        console.log('myUser:', myUser);
+        
         if (userToken && !myUser) {
           try {
+            console.log('✅ getCurrentUserInfo API 호출 시작');
             const userInfo = await getCurrentUserInfo(userToken);
+            console.log('✅ 사용자 정보 받아옴:', userInfo);
             setMyUser(userInfo);
           } catch (error) {
             console.error('사용자 정보 로드 실패:', error);
           }
+        } else {
+          console.log('❌ 사용자 정보 로드 조건 불충족');
         }
       };
 
@@ -391,6 +478,11 @@ function Home() {
       // 홈 화면으로 돌아왔을 때 메모 데이터 새로 불러오기 (필터 변경이 아닌 경우에만)
       if (userToken && !route.params?.filterChanged) {
         fetchAllMemos();
+      }
+      
+      // 인사이트 데이터 가져오기
+      if (userToken && myUser?.id) {
+        fetchInsights();
       }
       
       // 홈 화면으로 돌아왔을 때 위치 정보 빠르게 업데이트
@@ -533,6 +625,54 @@ function Home() {
   const handleMemoManagerPress = useCallback(() => {
     navigation.navigate('MemoManager');
   }, [navigation]);
+
+  // 인사이트 가져오기
+  const fetchInsights = useCallback(async () => {
+    if (!userToken || !myUser?.id) return;
+    
+    try {
+      setIsLoadingInsights(true);
+      const insightsData = await getUserInsights(myUser.id, userToken);
+      setInsights(insightsData);
+    } catch (error) {
+      console.error('인사이트 로드 실패:', error);
+    } finally {
+      setIsLoadingInsights(false);
+    }
+  }, [userToken, myUser?.id]);
+
+  // 주간인사이트 클릭 시 프로필의 인사이트 탭으로 이동
+  const handleInsightsPress = useCallback(async () => {
+    console.log('🔍 handleInsightsPress 호출됨');
+    console.log('myUser:', myUser);
+    console.log('myUser?.id:', myUser?.id);
+    
+    try {
+      // myUser.id가 있으면 사용, 없으면 현재 사용자 정보에서 가져오기
+      let userId = myUser?.id;
+      
+      if (!userId && userToken) {
+        console.log('🔍 myUser.id가 없어서 getCurrentUserInfo API 호출');
+        const userInfo = await getCurrentUserInfo(userToken);
+        userId = userInfo?.user_id;
+        console.log('✅ API에서 가져온 userId:', userId);
+      }
+      
+      if (userId) {
+        console.log('✅ MyProfile로 네비게이션 시작');
+        navigation.navigate('MyProfile', { 
+          activeTab: 'insight',
+          refreshInsights: true 
+        });
+      } else {
+        console.log('❌ userId를 가져올 수 없음');
+        Alert.alert('오류', '사용자 정보를 가져올 수 없습니다.');
+      }
+    } catch (error) {
+      console.error('❌ handleInsightsPress 오류:', error);
+      Alert.alert('오류', '네비게이션 중 오류가 발생했습니다.');
+    }
+  }, [navigation, myUser?.id, userToken]);
 
 
 
@@ -709,17 +849,33 @@ function Home() {
         onPressMemo={handleMemoPress}
       />
 
-      <View style={styles.topBar}>
+      <TouchableOpacity 
+        style={styles.topBar} 
+        onPress={() => {
+          console.log('🔍 주간인사이트 TouchableOpacity 클릭됨');
+          handleInsightsPress();
+        }}
+        activeOpacity={0.7}
+      >
         <Text style={styles.moodText}>주간 인사이트</Text>
-      </View>
+        <View style={styles.insightRow}>
+          <Text style={styles.insightContent} numberOfLines={1} ellipsizeMode="tail">
+            {insights?.content || '자신의 위치에서 메모를 생성하여 인사이트를 만드세요!'}
+          </Text>
+          <TouchableOpacity onPress={() => setShowInsightModal(true)}>
+            <MaterialIcons name="expand-more" size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
 
-      {routeVisible && (
-        <RouteBox
-          routeSlideAnim={routeSlideAnim}
-          routePanResponder={routePanResponder}
-          destination={destination}
-        />
-      )}
+      <RouteBox
+        routeSlideAnim={routeSlideAnim}
+        routePanResponder={routePanResponder}
+        destination={destination}
+        isLoadingDestination={isLoadingDestination}
+        recommendations={recommendations}
+        isLoadingRecommendations={isLoadingRecommendations}
+      />
 
       <TouchableOpacity style={styles.myMemoManage} onPress={handleMemoManagerPress}>
         <FontAwesome name="navicon" size={24} color="black" />
@@ -746,6 +902,23 @@ function Home() {
         userToken={userToken} // 사용자 토큰 추가
         onMemosUpdate={setMemos} // 메모 업데이트 콜백 추가
       />
+
+      {/* 인사이트 모달 */}
+      {showInsightModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.insightModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>주간 인사이트</Text>
+              <TouchableOpacity onPress={() => setShowInsightModal(false)}>
+                <MaterialIcons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalContent}>
+              {insights?.content || '자신의 위치에서 메모를 생성하여 인사이트를 만드세요!'}
+            </Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -756,18 +929,43 @@ export default React.memo(Home);
 const styles = StyleSheet.create({
   topBar: {
     position: 'absolute',
-    top: 65, // 70 → 100으로 조정하여 상태바 아래에 위치
+    top: 55, // 70 → 100으로 조정하여 상태바 아래에 위치
     alignSelf: 'center',
     backgroundColor: 'white',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 10,
     elevation: 5,
     zIndex: 10, // 지도 위에 표시되도록 zIndex 추가
+    alignItems: 'center',
+    minWidth: 160,
+    maxWidth: 280,
   },
   moodText: {
     fontSize: 14,
     fontWeight: '500',
+    marginBottom: 2,
+  },
+  insightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  insightContent: {
+    fontSize: 11,
+    color: '#666',
+    textAlign: 'left',
+    flex: 1,
+    marginRight: 6,
+    lineHeight: 14,
+    maxWidth: 220,
+  },
+  noInsightText: {
+    fontSize: 9,
+    color: '#999',
+    textAlign: 'center',
+    maxWidth: 260,
   },
 
   myMemoManage: {
@@ -843,5 +1041,40 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#333',
     marginTop: 16,
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  insightModal: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 20,
+    margin: 20,
+    maxWidth: '90%',
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  modalContent: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#666',
   },
 });

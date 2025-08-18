@@ -77,8 +77,8 @@ const ProfileImageWithPresignedUrl = ({ profileUrl }) => {
     <Image
       source={{ uri: presignedUrl }}
       style={styles.profileImage}
-      onError={(e) => console.log('🖼️ 이미지 로드 실패:', e.nativeEvent)}
-      onLoad={() => console.log('🖼️ 이미지 로드 성공')}
+      onError={(e) => console.log('이미지 로드 실패:', e.nativeEvent)}
+      onLoad={() => console.log('이미지 로드 성공')}
     />
   );
 };
@@ -448,7 +448,7 @@ export default function OtherProfile() {
           <View style={styles.followRow}>
             <View style={styles.followBox}>
               <Text style={styles.followNumber}>{userInfo?.follower_count || 0}</Text>
-              <Text style={styles.followLabel}>Followers</Text>
+              <Text style={styles.followLabel}>Follower</Text>
             </View>
             <View style={styles.followBox}>
               <Text style={styles.followNumber}>{userInfo?.following_count || 0}</Text>
@@ -495,7 +495,14 @@ export default function OtherProfile() {
             </View>
           )
         ) : (
-          <Insight />
+          otherUserId ? (
+            <Insight profileUserId={otherUserId} />
+          ) : (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#007AFF" />
+              <Text style={styles.loadingText}>사용자 정보를 불러오는 중...</Text>
+            </View>
+          )
         )}
       </View>
       

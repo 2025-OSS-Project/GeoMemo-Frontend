@@ -51,8 +51,8 @@ const ProfileImageWithPresignedUrl = ({ profileUrl, style }) => {
     <Image
       source={{ uri: presignedUrl }}
       style={style}
-      onError={(e) => console.log('🖼️ 이미지 로드 실패:', e.nativeEvent)}
-      onLoad={() => console.log('🖼️ 이미지 로드 성공')}
+      onError={(e) => console.log('이미지 로드 실패:', e.nativeEvent)}
+      onLoad={() => console.log('이미지 로드 성공')}
     />
   );
 };
