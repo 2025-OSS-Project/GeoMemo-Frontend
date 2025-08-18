@@ -19,7 +19,7 @@ export default function ThisMemo() {
             
             // 저장된 토큰 가져오기
             const userToken = await AsyncStorage.getItem('userToken');
-            const result = await getAllMemos(userToken, 'me'); // me 필터 적용
+            const result = await getAllMemos(userToken, 'self'); // self 필터 적용
             
             if (result.success && result.data) {
                 setMemos(result.data);
