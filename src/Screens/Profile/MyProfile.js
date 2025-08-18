@@ -300,7 +300,18 @@ export default function MyProfile() {
 
       {/* 콘텐츠 영역 */}
       <View style={styles.contentArea}>
-        {activeTab === 'scrap' ? <ScrapMemo /> : <Insight />}
+        {activeTab === 'scrap' ? (
+          <ScrapMemo />
+        ) : (
+          userInfo?.user_id ? (
+            <Insight profileUserId={userInfo.user_id} />
+          ) : (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#007AFF" />
+              <Text style={styles.loadingText}>사용자 정보를 불러오는 중...</Text>
+            </View>
+          )
+        )}
       </View>
       
       {/* 홈 버튼과 검색 버튼 */}

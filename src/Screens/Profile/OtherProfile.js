@@ -495,7 +495,14 @@ export default function OtherProfile() {
             </View>
           )
         ) : (
-          <Insight />
+          otherUserId ? (
+            <Insight profileUserId={otherUserId} />
+          ) : (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#007AFF" />
+              <Text style={styles.loadingText}>사용자 정보를 불러오는 중...</Text>
+            </View>
+          )
         )}
       </View>
       
