@@ -43,6 +43,7 @@ function Home() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [mapBounds, setMapBounds] = useState(null);
   const [userToken, setUserToken] = useState(null);
+  const [isTokenLoaded, setIsTokenLoaded] = useState(false); // 토큰 로딩 상태 추가
   const [isLoadingMemos, setIsLoadingMemos] = useState(false);
   const [destination, setDestination] = useState(null);
   const [isLoadingDestination, setIsLoadingDestination] = useState(false);
@@ -113,12 +114,37 @@ function Home() {
     try {
       const token = await AsyncStorage.getItem('userToken');
       if (token) {
-        setUserToken(token);
+        // 토큰 유효성 검사
+        const isValid = await validateToken(token);
+        if (isValid) {
+          setUserToken(token);
+          console.log('✅ 유효한 토큰 로드됨');
+        } else {
+          console.log('❌ 유효하지 않은 토큰 제거');
+          await AsyncStorage.removeItem('userToken');
+          setUserToken(null);
+        }
       }
+      setIsTokenLoaded(true); // 토큰 로드 완료 (토큰이 있든 없든)
     } catch (error) {
       // 토큰 로드 실패 시 무시
+      console.error('토큰 로드 중 오류:', error);
+      setIsTokenLoaded(true); // 에러가 발생해도 로딩 상태 완료
     }
   };
+
+  // 토큰 유효성 검사
+  const validateToken = useCallback(async (token) => {
+    if (!token) return false;
+    
+    try {
+      const userInfo = await getCurrentUserInfo(token);
+      return !!userInfo?.user_id;
+    } catch (error) {
+      console.log('토큰 유효성 검사 실패:', error.message);
+      return false;
+    }
+  }, []);
 
   // 사용자 토큰 가져오기
   useEffect(() => {
@@ -152,7 +178,7 @@ function Home() {
 
   // AI 추천 위치 설정 (API 호출)
   const fetchRecommendedDestination = useCallback(async () => {
-    if (!location || isLoadingDestination) return;
+    if (!location || !isTokenLoaded || isLoadingDestination) return;
     
     try {
       setIsLoadingDestination(true);
@@ -172,11 +198,11 @@ function Home() {
     } finally {
       setIsLoadingDestination(false);
     }
-  }, [location, userToken, isLoadingDestination]);
+  }, [location, userToken, isLoadingDestination, isTokenLoaded]);
 
   // 추천 장소 목록 가져오기 (GET)
   const fetchRecommendations = useCallback(async () => {
-    if (!userToken || isLoadingRecommendations) return;
+    if (!userToken || !isTokenLoaded || isLoadingRecommendations) return;
     
     try {
       setIsLoadingRecommendations(true);
@@ -193,11 +219,11 @@ function Home() {
     } finally {
       setIsLoadingRecommendations(false);
     }
-  }, [userToken, isLoadingRecommendations]);
+  }, [userToken, isLoadingRecommendations, isTokenLoaded]);
 
   // 위치가 변경되었을 때만 장소 추천 API 호출 (한 번만 실행)
   useEffect(() => {
-    if (location && location.latitude && location.longitude && userToken && !hasCalledAPI.current) {
+    if (location && location.latitude && location.longitude && userToken && isTokenLoaded && !hasCalledAPI.current) {
       hasCalledAPI.current = true; // API 호출 플래그 설정
       console.log('📍 위치 기반 API 호출 시작 (한 번만)');
       
@@ -209,7 +235,7 @@ function Home() {
         fetchRecommendations();
       }, 1000);
     }
-  }, [location, userToken]); // location과 userToken이 모두 준비되었을 때 한 번만 실행
+  }, [location, userToken, isTokenLoaded]); // location과 userToken이 모두 준비되었을 때 한 번만 실행
 
   // API 함수들 (현재는 사용하지 않음 - 즉시 반환)
   const fetchCurrentUser = useCallback(() => {
@@ -222,7 +248,7 @@ function Home() {
 
   const fetchAllMemos = useCallback(async () => {
     try {
-      if (!userToken) {
+      if (!userToken || !isTokenLoaded) {
         return;
       }
       
@@ -287,7 +313,7 @@ function Home() {
       // 로딩 상태 해제
       setIsLoadingMemos(false);
     }
-  }, [userToken, filter, mapBounds]);
+  }, [userToken, filter, mapBounds, isTokenLoaded]);
 
   // 슬라이드 패널을 위한 panResponder
   const panResponder = useRef(
@@ -454,6 +480,11 @@ function Home() {
   // 화면에 포커스가 돌아왔을 때 최적화 (필요한 경우에만 실행)
   useFocusEffect(
     useCallback(() => {
+      // 토큰이 완전히 로드된 후에만 실행
+      if (!isTokenLoaded) {
+        return;
+      }
+
       // 사용자 정보 가져오기 (기존 함수 제거 - loadDataAfterUserInfo에서 처리)
 
       // 사용자 정보 로드 후 인사이트와 메모 데이터 가져오기
@@ -485,6 +516,13 @@ function Home() {
             }
           } catch (error) {
             console.error('사용자 정보 로드 실패:', error);
+            // 토큰이 유효하지 않은 경우 토큰 제거
+            if (error.message.includes('Invalid token') || error.message.includes('401')) {
+              console.log('❌ 유효하지 않은 토큰으로 인해 토큰 제거');
+              await AsyncStorage.removeItem('userToken');
+              setUserToken(null);
+              setMyUser(null);
+            }
           }
         } else if (userToken && myUser?.user_id) {
           // 이미 사용자 정보가 있는 경우
@@ -557,7 +595,7 @@ function Home() {
       if (route.params?.filterChanged) {
         navigation.setParams({ filterChanged: false });
       }
-    }, [location, route.params?.refreshLocation, route.params?.filterChanged, navigation, userToken, fetchAllMemos, mapBounds, myUser?.user_id])
+    }, [location, route.params?.refreshLocation, route.params?.filterChanged, navigation, userToken, fetchAllMemos, mapBounds, myUser?.user_id, isTokenLoaded])
   );
 
   const goToCurrentLocation = useCallback(() => {
@@ -659,6 +697,12 @@ function Home() {
     console.log('myUser:', myUser);
     console.log('myUser?.user_id:', myUser?.user_id);
     
+    // 토큰이 로드되지 않았으면 대기
+    if (!isTokenLoaded) {
+      console.log('⏳ 토큰이 아직 로드되지 않음, 대기 중...');
+      return;
+    }
+    
     try {
       // myUser.user_id가 있으면 사용, 없으면 현재 사용자 정보에서 가져오기
       let userId = myUser?.user_id;
@@ -682,9 +726,16 @@ function Home() {
       }
     } catch (error) {
       console.error('❌ handleInsightsPress 오류:', error);
+      // 토큰이 유효하지 않은 경우 토큰 제거
+      if (error.message.includes('Invalid token') || error.message.includes('401')) {
+        console.log('❌ 유효하지 않은 토큰으로 인해 토큰 제거');
+        await AsyncStorage.removeItem('userToken');
+        setUserToken(null);
+        setMyUser(null);
+      }
       Alert.alert('오류', '네비게이션 중 오류가 발생했습니다.');
     }
-  }, [navigation, myUser?.user_id, userToken]);
+  }, [navigation, myUser?.user_id, userToken, isTokenLoaded]);
 
 
 
@@ -741,7 +792,7 @@ function Home() {
       }
 
       // 필터 변경 시 즉시 메모 조회
-      if (userToken) {
+      if (userToken && isTokenLoaded) {
         const response = await getAllMemos(userToken, viewSetting);
         
         if (response.success && response.data) {
@@ -808,7 +859,7 @@ function Home() {
       // 로딩 상태 해제
       setIsLoadingMemos(false);
     }
-  }, [userToken, filter, navigation, mapBounds]);
+  }, [userToken, filter, navigation, mapBounds, isTokenLoaded]);
 
   // 초기화 중일 때 스켈레톤 UI 표시
   if (isInitializing) {
@@ -827,6 +878,27 @@ function Home() {
           <FontAwesome name="spinner" size={32} color="#111" />
         </Animated.View>
         <Text style={styles.loadingText}>지도 제작 중...</Text>
+      </View>
+    );
+  }
+
+  // 토큰이 로딩 중일 때 로딩 표시
+  if (!isTokenLoaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Animated.View
+          style={{
+            transform: [{
+              rotate: spinValue.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['0deg', '360deg'],
+              }),
+            }],
+          }}
+        >
+          <FontAwesome name="spinner" size={32} color="#111" />
+        </Animated.View>
+        <Text style={styles.loadingText}>사용자 정보 로딩 중...</Text>
       </View>
     );
   }
