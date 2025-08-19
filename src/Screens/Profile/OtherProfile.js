@@ -3,7 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Ale
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StatusBar } from 'expo-status-bar';
 import { getUserInfoById, followUser, unfollowUser, getFollowingList, getFollowingCount, getFollowersCount, generatePresignedGetUrl } from '../../config/api';
+import SafeScreen from '../../utils/SafeScreen';
 
 import OtherMemoList from './OtherMemoList';
 import Insight from './Insight';
@@ -395,9 +397,11 @@ export default function OtherProfile() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* 상단 바 */}
-      <View style={styles.topBar}>
+    <SafeScreen>
+      <StatusBar style="dark" translucent={true} />
+      <View style={styles.container}>
+        {/* 상단 바 */}
+        <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={24} color="black" />
         </TouchableOpacity>
@@ -508,7 +512,8 @@ export default function OtherProfile() {
       
       {/* 홈 버튼 */}
       <BottomButtons />
-    </View>
+      </View>
+    </SafeScreen>
   );
 }
 

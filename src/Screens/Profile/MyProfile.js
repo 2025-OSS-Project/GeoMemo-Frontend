@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Image, ActivityIndicator, Alert, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Alert, FlatList } from 'react-native';
 import { Ionicons, FontAwesome, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StatusBar } from 'expo-status-bar';
 import { getUserInfoById, getCurrentUserInfo, getFollowingCount, getFollowersCount, generatePresignedGetUrl } from '../../config/api';
+import SafeScreen from '../../utils/SafeScreen';
 
 import ScrapMemo from './ScrapMemo';
 import Insight from './Insight';
@@ -217,15 +219,11 @@ export default function MyProfile() {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar 
-        barStyle="dark-content" 
-        backgroundColor="#fff" 
-        translucent={false}
-        animated={true}
-      />
-      {/* 상단 네비게이션 */}
-      <View style={styles.topBar}>
+    <SafeScreen>
+      <StatusBar style="dark" translucent={true} />
+      <View style={styles.container}>
+        {/* 상단 네비게이션 */}
+        <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={24} color="black" />
         </TouchableOpacity>
@@ -316,7 +314,8 @@ export default function MyProfile() {
       
       {/* 홈 버튼과 검색 버튼 */}
       <BottomButtons />
-    </View>
+      </View>
+    </SafeScreen>
   );
 }
 

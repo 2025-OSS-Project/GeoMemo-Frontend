@@ -13,15 +13,15 @@ import {
   Platform
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { Entypo } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createMemo } from '../../config/api';
 import * as Location from 'expo-location';
+import SafeScreen from '../../utils/SafeScreen';
 
 export default function AddMemo() {
   const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [location, setLocation] = useState('');
@@ -161,106 +161,109 @@ export default function AddMemo() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <KeyboardAvoidingView 
-        style={styles.keyboardContainer} 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      >
-        <TouchableWithoutFeedback onPress={() => {
-          Keyboard.dismiss();
-          if (contentRef.current) {
-            contentRef.current.blur();
-          }
-        }}>
-          <ScrollView 
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="never"
-            showsVerticalScrollIndicator={false}
-            automaticallyAdjustKeyboardInsets={true}
-          >
-            <View style={styles.inputRow}>
-              <Text style={styles.timeBox}>{formatCurrentTime()}</Text>
-              <TextInput
-                placeholder="제목을 입력하세요"
-                placeholderTextColor="#999"
-                value={title}
-                onChangeText={setTitle}
-                style={styles.titleInput}
-                returnKeyType="next"
-              />
-            </View>
+    <SafeScreen>
+      <StatusBar style="dark" translucent={true} />
+      <View style={styles.container}>
+        <KeyboardAvoidingView 
+          style={styles.keyboardContainer} 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
+          <TouchableWithoutFeedback onPress={() => {
+            Keyboard.dismiss();
+            if (contentRef.current) {
+              contentRef.current.blur();
+            }
+          }}>
+            <ScrollView 
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="never"
+              showsVerticalScrollIndicator={false}
+              automaticallyAdjustKeyboardInsets={true}
+            >
+              <View style={styles.inputRow}>
+                <Text style={styles.timeBox}>{formatCurrentTime()}</Text>
+                <TextInput
+                  placeholder="제목을 입력하세요"
+                  placeholderTextColor="#999"
+                  value={title}
+                  onChangeText={setTitle}
+                  style={styles.titleInput}
+                  returnKeyType="next"
+                />
+              </View>
 
-            <View style={styles.inputRow}>
-              <TextInput
-                placeholder="위치를 입력하세요"
-                placeholderTextColor="#999"
-                value={location}
-                onChangeText={setLocation}
-                style={styles.locationInput}
-                returnKeyType="next"
-              />
-              <TextInput
-                placeholder="카테고리를 입력하세요"
-                placeholderTextColor="#999"
-                value={category}
-                onChangeText={setCategory}
-                style={styles.categoryInput}
-                returnKeyType="next"
-              />
-            </View>
-            
-            <View style={styles.locationStatus}>
-              <Text style={styles.locationStatusText}>
-                현재 주소: {currentLocation ? 
-                  (locationName || '주소 변환 중...') : 
-                  '위치 정보 가져오는 중...'
-                }
-              </Text>
-            </View>
-
-            <TextInput
-              ref={contentRef}
-              style={styles.contentInput}
-              multiline
-              value={content}
-              onChangeText={handleContentChange}
-              placeholder="메모를 입력하세요"
-              placeholderTextColor="#999"
-              returnKeyType="default"
-              blurOnSubmit={false}
-              textAlignVertical="top"
-              scrollEnabled={true}
-              autoCapitalize="sentences"
-              autoCorrect={true}
-              spellCheck={true}
-            />
-
-            <View style={styles.footer}>
-              <TouchableOpacity onPress={() => setIsPublic(!isPublic)}>
-                <View style={styles.footerBtn}>
-                  {isPublic ? 
-                    <Entypo name="eye" size={24} color="black" /> : 
-                    <Entypo name="eye-with-line" size={24} color="black" />
+              <View style={styles.inputRow}>
+                <TextInput
+                  placeholder="위치를 입력하세요"
+                  placeholderTextColor="#999"
+                  value={location}
+                  onChangeText={setLocation}
+                  style={styles.locationInput}
+                  returnKeyType="next"
+                />
+                <TextInput
+                  placeholder="카테고리를 입력하세요"
+                  placeholderTextColor="#999"
+                  value={category}
+                  onChangeText={setCategory}
+                  style={styles.categoryInput}
+                  returnKeyType="next"
+                />
+              </View>
+              
+              <View style={styles.locationStatus}>
+                <Text style={styles.locationStatusText}>
+                  현재 주소: {currentLocation ? 
+                    (locationName || '주소 변환 중...') : 
+                    '위치 정보 가져오는 중...'
                   }
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                onPress={handleSaveMemo}
-                disabled={isLoading}
-                style={[styles.footerBtn, isLoading && styles.disabledBtn]}
-              >
-                <Text style={styles.footerBtnText}>
-                  {isLoading ? '저장 중...' : '저장'}
                 </Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
-    </View>
+              </View>
+
+              <TextInput
+                ref={contentRef}
+                style={styles.contentInput}
+                multiline
+                value={content}
+                onChangeText={handleContentChange}
+                placeholder="메모를 입력하세요"
+                placeholderTextColor="#999"
+                returnKeyType="default"
+                blurOnSubmit={false}
+                textAlignVertical="top"
+                scrollEnabled={true}
+                autoCapitalize="sentences"
+                autoCorrect={true}
+                spellCheck={true}
+              />
+
+              <View style={styles.footer}>
+                <TouchableOpacity onPress={() => setIsPublic(!isPublic)}>
+                  <View style={styles.footerBtn}>
+                    {isPublic ? 
+                      <Entypo name="eye" size={24} color="black" /> : 
+                      <Entypo name="eye-with-line" size={24} color="black" />
+                    }
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  onPress={handleSaveMemo}
+                  disabled={isLoading}
+                  style={[styles.footerBtn, isLoading && styles.disabledBtn]}
+                >
+                  <Text style={styles.footerBtnText}>
+                    {isLoading ? '저장 중...' : '저장'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </View>
+    </SafeScreen>
   );
 }
 

@@ -11,7 +11,6 @@ import {
   Linking,
   FlatList,
   Image,
-  StatusBar,
   Alert
 } from 'react-native';
 import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
@@ -20,10 +19,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { Magnetometer } from 'expo-sensors';
 import { Ionicons, FontAwesome, FontAwesome5, Entypo, MaterialIcons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
 import MapSection from './MapSection';
 import SlidePanel from './SlidePanel';
 import RouteBox from './RouteBox';
 import { getAllMemos, updateViewSettings, getCurrentUserInfo, recommendPlaces, getRecommendations, getUserInsights } from '../../config/api';
+import SafeScreen from '../../utils/SafeScreen';
 // MemoModal import 제거 - Profile의 memoView 사용
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -829,9 +830,8 @@ function Home() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      {/* StatusBar 설정 - 어두운 텍스트 */}
-
+    <SafeScreen>
+      <StatusBar style="dark" translucent={true} />
       
       {/* MemoModal 제거 - Profile의 memoView 사용 */}
 
@@ -919,7 +919,7 @@ function Home() {
           </View>
         </View>
       )}
-    </View>
+    </SafeScreen>
   );
 }
 

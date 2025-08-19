@@ -3,8 +3,10 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import ThisMemo from './ThisMemo';
 import AllMemo from './AllMemo';
+import SafeScreen from '../../utils/SafeScreen';
 
 export default function MemoManager() {
   const navigation = useNavigation();
@@ -12,15 +14,17 @@ export default function MemoManager() {
   const [activeTab, setActiveTab] = useState('current');
 
   return (
-    <View style={styles.container}>
-      {/* 헤더 */}
-      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={24} color="black" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>my memo</Text>
-        <View style={styles.placeholder} />
-      </View>
+    <SafeScreen>
+      <StatusBar style="dark" translucent={true} />
+      <View style={styles.container}>
+        {/* 헤더 */}
+        <View style={[styles.header, { paddingTop: 20 }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={24} color="black" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>my memo</Text>
+          <View style={styles.placeholder} />
+        </View>
 
       {/* 탭 버튼 */}
       <View style={styles.tabContainer}>
@@ -41,7 +45,8 @@ export default function MemoManager() {
 
       {/* 메모 리스트 */}
       {activeTab === 'current' ? <ThisMemo /> : <AllMemo />}
-    </View>
+      </View>
+    </SafeScreen>
   );
 }
 

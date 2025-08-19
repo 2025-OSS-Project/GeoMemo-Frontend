@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Image, ActivityIndicator, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, Linking } from 'react-native';
 import { Ionicons, FontAwesome, AntDesign } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
 import { getMemoById, scrapMemo, unscrapMemo, getCurrentUserInfo, checkIsScraped, generatePresignedGetUrl } from '../../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import SafeScreen from '../../utils/SafeScreen';
 
 // Presigned URL을 사용하여 프로필 이미지를 표시하는 컴포넌트
 const ProfileImageWithPresignedUrl = ({ profileUrl }) => {
@@ -392,52 +394,46 @@ export default function MemoView({ navigation, route }) {
   // 에러가 있을 때
   if (error) {
     return (
-      <View style={styles.container}>
-        <StatusBar 
-          barStyle="dark-content" 
-          backgroundColor="#fff" 
-          translucent={false}
-          animated={true}
-        />
-        <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={24} color="black" />
-          </TouchableOpacity>
+      <SafeScreen>
+        <StatusBar style="dark" translucent={true} />
+        <View style={styles.container}>
+          <View style={styles.topBar}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Ionicons name="chevron-back" size={24} color="black" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={48} color="#dc3545" />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => navigation.goBack()}>
+              <Text style={styles.retryButtonText}>돌아가기</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={48} color="#dc3545" />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.retryButtonText}>돌아가기</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      </SafeScreen>
     );
   }
 
   // 메모가 없을 때
   if (!memo) {
     return (
-      <View style={styles.container}>
-        <StatusBar 
-          barStyle="dark-content" 
-          backgroundColor="#fff" 
-          translucent={false}
-          animated={true}
-        />
-        <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={24} color="black" />
-          </TouchableOpacity>
+      <SafeScreen>
+        <StatusBar style="dark" translucent={true} />
+        <View style={styles.container}>
+          <View style={styles.topBar}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Ionicons name="chevron-back" size={24} color="black" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.errorContainer}>
+            <Ionicons name="document-text" size={48} color="#6c757d" />
+            <Text style={styles.errorText}>메모를 찾을 수 없습니다.</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => navigation.goBack()}>
+              <Text style={styles.retryButtonText}>돌아가기</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={styles.errorContainer}>
-          <Ionicons name="document-text" size={48} color="#6c757d" />
-          <Text style={styles.errorText}>메모를 찾을 수 없습니다.</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.retryButtonText}>돌아가기</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      </SafeScreen>
     );
   }
 
@@ -459,139 +455,135 @@ export default function MemoView({ navigation, route }) {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar 
-        barStyle="dark-content" 
-        backgroundColor="#fff" 
-        translucent={false}
-        animated={true}
-      />
-      {/* 상단 바 */}
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={24} color="black" />
-        </TouchableOpacity>
+    <SafeScreen>
+      <StatusBar style="dark" translucent={true} />
+      <View style={styles.container}>
+        {/* 상단 바 */}
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={24} color="black" />
+          </TouchableOpacity>
 
-                 <TouchableOpacity onPress={handleScrap} disabled={isScrapLoading}>
-          {isScrapLoading ? (
-            <ActivityIndicator size="small" color="#6c757d" />
-          ) : (
-            isScrapped ? (
-              <FontAwesome name="bookmark" size={24} color="#000000" />
+          <TouchableOpacity onPress={handleScrap} disabled={isScrapLoading}>
+            {isScrapLoading ? (
+              <ActivityIndicator size="small" color="#6c757d" />
             ) : (
-              <FontAwesome name="bookmark-o" size={24} color="#6c757d" />
-            )
-          )}
-        </TouchableOpacity>
-
-      </View>
-
-      <View style={styles.mainContainer}>
-        {/* 제목 줄 */}
-        <View style={styles.inputRow}>
-          {/* 프로필 사진 */}
-          <TouchableOpacity 
-            onPress={() => {
-              // 메모 작성자의 사용자 ID 추출 (여러 형태 지원)
-              const memoUserId = memo.userId || memo.user?.userId || memo.userId;
-              
-              // 현재 사용자 ID와 비교
-              if (memoUserId && myUserId) {
-                if (memoUserId.toString() === myUserId.toString()) {
-                  // 내 메모인 경우 MyProfile로 이동
-                  console.log('내 메모입니다. MyProfile로 이동');
-                  navigation.navigate('MyProfile');
-                } else {
-                  // 다른 사용자의 메모인 경우 OtherProfile로 이동
-                  console.log('다른 사용자의 메모입니다. OtherProfile로 이동:', memoUserId);
-                  navigation.navigate('OtherProfile', { userId: memoUserId });
-                }
-              } else {
-                // 사용자 ID 정보가 부족한 경우
-                console.warn('사용자 ID 정보가 부족합니다. memoUserId:', memoUserId, 'myUserId:', myUserId);
-                Alert.alert('오류', '사용자 정보를 확인할 수 없습니다.');
-              }
-            }}
-          >
-            <View style={styles.profileCircle}>
-              {memo.profileImage ? (
-                <ProfileImageWithPresignedUrl 
-                  profileUrl={memo.profileImage} 
-                />
-              ) : memo.user?.photoUrl ? (
-                <ProfileImageWithPresignedUrl 
-                  profileUrl={memo.user.photoUrl} 
-                />
-              ) : null}
-            </View>
-          </TouchableOpacity>
-          
-          {/* 유저 닉네임만 */}
-          <View style={styles.nicknameContainer}>
-            <Text style={styles.userNickname}>
-              {memo.user?.username || memo.userName || memo.userNickname || '사용자'}
-            </Text>
-          </View>
-        </View>
-        
-        {/* 시간|장소 */}
-        <View style={styles.locationTimeRow}>
-          <View style={styles.timeLocationContainer}>
-            <Text style={styles.timeBox}>
-              {formatDate(memo.createdAt)}
-            </Text>
-            <Text style={styles.locationBox} numberOfLines={1} ellipsizeMode="tail">
-              {memo.location?.address || '위치 없음'}
-            </Text>
-          </View>
-        </View>
-
-        {/* 내용 */}
-        <ScrollView 
-          style={styles.contentInput}
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={styles.contentTitle}>{memo.title || '제목 없음'}</Text>
-          <Text style={styles.contentText}>{memo?.content ?? '내용 없음'}</Text>
-        </ScrollView>
-
-        {/* 메모 정보 */}
-        <View style={styles.memoInfoSection}>
-          <View style={styles.memoInfoContainer}>
-            <Text style={styles.memoInfoItem}>
-              생성일: {formatDate(memo.createdAt)}
-            </Text>
-            {memo.updatedAt && memo.updatedAt !== memo.createdAt && (
-              <Text style={styles.memoInfoItem}>
-                수정일: {formatDate(memo.updatedAt)}
-              </Text>
+              isScrapped ? (
+                <FontAwesome name="bookmark" size={24} color="#000000" />
+              ) : (
+                <FontAwesome name="bookmark-o" size={24} color="#6c757d" />
+              )
             )}
-            <Text style={styles.memoInfoItem}>
-              공개 여부: {memo.isPublic ? '공개' : '비공개'}
-            </Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
-        {/* 하단 버튼들 */}
-        <View style={styles.footer}>
-          <TouchableOpacity>
-            <View style={styles.footerBtn}>
-              <AntDesign name="link" size={24} color="black" />
-            </View>
-          </TouchableOpacity>
-
-          <View style={styles.footerSpacer} />
-
-          {memo.location?.address ? (
-            <TouchableOpacity onPress={handleNavigation}>
-              <View style={styles.footerBtn}>
-                <Ionicons name="navigate" size={24} color="black" />
+        <View style={styles.mainContainer}>
+          {/* 제목 줄 */}
+          <View style={styles.inputRow}>
+            {/* 프로필 사진 */}
+            <TouchableOpacity 
+              onPress={() => {
+                // 메모 작성자의 사용자 ID 추출 (여러 형태 지원)
+                const memoUserId = memo.userId || memo.user?.userId || memo.userId;
+                
+                // 현재 사용자 ID와 비교
+                if (memoUserId && myUserId) {
+                  if (memoUserId.toString() === myUserId.toString()) {
+                    // 내 메모인 경우 MyProfile로 이동
+                    console.log('내 메모입니다. MyProfile로 이동');
+                    navigation.navigate('MyProfile');
+                  } else {
+                    // 다른 사용자의 메모인 경우 OtherProfile로 이동
+                    console.log('다른 사용자의 메모입니다. OtherProfile로 이동:', memoUserId);
+                    navigation.navigate('OtherProfile', { userId: memoUserId });
+                  }
+                } else {
+                  // 사용자 ID 정보가 부족한 경우
+                  console.warn('사용자 ID 정보가 부족합니다. memoUserId:', memoUserId, 'myUserId:', myUserId);
+                  Alert.alert('오류', '사용자 정보를 확인할 수 없습니다.');
+                }
+              }}
+            >
+              <View style={styles.profileCircle}>
+                {memo.profileImage ? (
+                  <ProfileImageWithPresignedUrl 
+                    profileUrl={memo.profileImage} 
+                  />
+                ) : memo.user?.photoUrl ? (
+                  <ProfileImageWithPresignedUrl 
+                    profileUrl={memo.user.photoUrl} 
+                  />
+                ) : null}
               </View>
             </TouchableOpacity>
-          ) : null}
+            
+            {/* 유저 닉네임만 */}
+            <View style={styles.nicknameContainer}>
+              <Text style={styles.userNickname}>
+                {memo.user?.username || memo.userName || memo.userNickname || '사용자'}
+              </Text>
+            </View>
+          </View>
+          
+          {/* 시간|장소 */}
+          <View style={styles.locationTimeRow}>
+            <View style={styles.timeLocationContainer}>
+              <Text style={styles.timeBox}>
+                {formatDate(memo.createdAt)}
+              </Text>
+              <Text style={styles.locationBox} numberOfLines={1} ellipsizeMode="tail">
+                {memo.location?.address || '위치 없음'}
+              </Text>
+            </View>
+          </View>
+
+          {/* 내용 */}
+          <ScrollView 
+            style={styles.contentInput}
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.contentTitle}>{memo.title || '제목 없음'}</Text>
+            <Text style={styles.contentText}>{memo?.content ?? '내용 없음'}</Text>
+          </ScrollView>
+
+          {/* 메모 정보 */}
+          <View style={styles.memoInfoSection}>
+            <View style={styles.memoInfoContainer}>
+              <Text style={styles.memoInfoItem}>
+                생성일: {formatDate(memo.createdAt)}
+              </Text>
+              {memo.updatedAt && memo.updatedAt !== memo.createdAt && (
+                <Text style={styles.memoInfoItem}>
+                  수정일: {formatDate(memo.updatedAt)}
+                </Text>
+              )}
+              <Text style={styles.memoInfoItem}>
+                공개 여부: {memo.isPublic ? '공개' : '비공개'}
+              </Text>
+            </View>
+          </View>
+
+          {/* 하단 버튼들 */}
+          <View style={styles.footer}>
+            <TouchableOpacity>
+              <View style={styles.footerBtn}>
+                <AntDesign name="link" size={24} color="black" />
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.footerSpacer} />
+
+            {memo.location?.address ? (
+              <TouchableOpacity onPress={handleNavigation}>
+                <View style={styles.footerBtn}>
+                  <Ionicons name="navigate" size={24} color="black" />
+                </View>
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </View>
       </View>
-    </View>
+    </SafeScreen>
   );
 }
 

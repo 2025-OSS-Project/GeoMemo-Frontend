@@ -32,6 +32,15 @@
         "googleMaps": {
           "apiKey": "AIzaSyA-tR6iHp44OT7wa4Lx4Htdi1BqQx_okNM"
         }
+      },
+      "androidStatusBar": {
+        "translucent": true,
+        "backgroundColor": "transparent",
+        "barStyle": "dark-content"
+      },
+      "androidNavigationBar": {
+        "backgroundColor": "#FFFFFF",
+        "barStyle": "dark-content"
       }
     },
     "web": {

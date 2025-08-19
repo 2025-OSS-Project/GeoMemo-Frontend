@@ -7,11 +7,12 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  StatusBar,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { signIn, validateToken } from '../../config/api';
+import SafeScreen from '../../utils/SafeScreen';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -193,76 +194,78 @@ export default function Login() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      <Text style={styles.title}>GeoMemo</Text>
+    <SafeScreen>
+      <StatusBar style="dark" translucent={true} />
+      <View style={styles.container}>
+        <Text style={styles.title}>GeoMemo</Text>
 
-      <Text style={styles.label}>E-mail</Text>
-      <TextInput
-        placeholder="email@email.com"
-        placeholderTextColor="#999"
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        returnKeyType="next"
-        editable={!isLoading}
-      />
+        <Text style={styles.label}>E-mail</Text>
+        <TextInput
+          placeholder="email@email.com"
+          placeholderTextColor="#999"
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          returnKeyType="next"
+          editable={!isLoading}
+        />
 
-      <Text style={styles.label}>비밀번호</Text>
-      <TextInput
-        placeholder="비밀번호"
-        placeholderTextColor="#999"
-        style={styles.input}
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        returnKeyType="done"
-        onSubmitEditing={handleLogin}
-        editable={!isLoading}
-      />
+        <Text style={styles.label}>비밀번호</Text>
+        <TextInput
+          placeholder="비밀번호"
+          placeholderTextColor="#999"
+          style={styles.input}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          returnKeyType="done"
+          onSubmitEditing={handleLogin}
+          editable={!isLoading}
+        />
 
-      <TouchableOpacity 
-        style={[styles.loginButton, isLoading && styles.disabledButton]} 
-        onPress={handleLogin}
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color="white" />
-            <Text style={styles.loginButtonText}>로그인 중...</Text>
-          </View>
-        ) : (
-          <Text style={styles.loginButtonText}>로그인</Text>
-        )}
-      </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.loginButton, isLoading && styles.disabledButton]} 
+          onPress={handleLogin}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="white" />
+              <Text style={styles.loginButtonText}>로그인 중...</Text>
+            </View>
+          ) : (
+            <Text style={styles.loginButtonText}>로그인</Text>
+          )}
+        </TouchableOpacity>
 
-      <View style={styles.dividerContainer}>
-        <View style={styles.line} />
-        <Text style={styles.or}>또는</Text>
-        <View style={styles.line} />
-      </View>
+        <View style={styles.dividerContainer}>
+          <View style={styles.line} />
+          <Text style={styles.or}>또는</Text>
+          <View style={styles.line} />
+        </View>
 
-      <TouchableOpacity style={[styles.socialButton, styles.googleButton]} disabled={isLoading}>
-        <Text style={styles.socialText}>Google로 로그인</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={[styles.socialButton, styles.googleButton]} disabled={isLoading}>
+          <Text style={styles.socialText}>Google로 로그인</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.socialButton, styles.naverButton]} disabled={isLoading}>
-        <Text style={styles.socialText}>Naver로 로그인</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={[styles.socialButton, styles.naverButton]} disabled={isLoading}>
+          <Text style={styles.socialText}>Naver로 로그인</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.socialButton, styles.kakaoButton]} disabled={isLoading}>
-        <Text style={styles.socialText}>Kakao로 로그인</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={[styles.socialButton, styles.kakaoButton]} disabled={isLoading}>
+          <Text style={styles.socialText}>Kakao로 로그인</Text>
+        </TouchableOpacity>
 
-      <Text style={styles.bottomText}>
-        계정이 없으신가요?{' '}
-        <Text style={styles.linkText} onPress={() => navigation.navigate('SignUp')}>
-          가입하기
+        <Text style={styles.bottomText}>
+          계정이 없으신가요?{' '}
+          <Text style={styles.linkText} onPress={() => navigation.navigate('SignUp')}>
+            가입하기
+          </Text>
         </Text>
-      </Text>
-    </View>
+      </View>
+    </SafeScreen>
   );
 }
 
@@ -272,12 +275,13 @@ const styles = StyleSheet.create({
     padding: 30,
     backgroundColor: '#fff',
     justifyContent: 'center',
+    paddingTop: 0, // SafeScreen에서 이미 top safe area를 처리하므로 제거
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     alignSelf: 'center',
-    marginTop: -90,
+    marginTop: 0, // SafeScreen에서 이미 top safe area를 처리하므로 0으로 설정
     marginBottom: 40,
   },
   label: {

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Alert, ActivityIndicator, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
 import { getFollowersList, acceptFollowRequest, declineFollowRequest, generatePresignedGetUrl } from '../../config/api';
 import BottomButtons from '../Main/BottomButtons';
+import SafeScreen from '../../utils/SafeScreen';
 
 // Presigned URL을 사용하여 프로필 이미지를 표시하는 컴포넌트
 const ProfileImageWithPresignedUrl = ({ profileUrl }) => {
@@ -195,7 +197,31 @@ export default function FollowRequest() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeScreen>
+        <StatusBar style="dark" translucent={true} />
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
+              <Ionicons name="chevron-back" size={24} color="black" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Follow Request</Text>
+            <View style={styles.placeholder} />
+          </View>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#333" />
+            <Text style={styles.loadingText}>팔로우 요청을 불러오는 중...</Text>
+          </View>
+          <BottomButtons />
+        </View>
+      </SafeScreen>
+    );
+  }
+
+  return (
+    <SafeScreen>
+      <StatusBar style="dark" translucent={true} />
+      <View style={styles.container}>
+        {/* 커스텀 헤더 */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
             <Ionicons name="chevron-back" size={24} color="black" />
@@ -203,41 +229,23 @@ export default function FollowRequest() {
           <Text style={styles.headerTitle}>Follow Request</Text>
           <View style={styles.placeholder} />
         </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#333" />
-          <Text style={styles.loadingText}>팔로우 요청을 불러오는 중...</Text>
-        </View>
+
+        <FlatList
+          data={pendingFollowers}
+          keyExtractor={(item) => item.userId?.toString() || `pending-${item.nickname}`}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>대기 중인 팔로우 요청이 없습니다.</Text>
+              <Text style={styles.emptySubText}>새로운 팔로우 요청이 오면 여기에 표시됩니다.</Text>
+            </View>
+          }
+        />
         <BottomButtons />
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={styles.container}>
-      {/* 커스텀 헤더 */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color="black" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Follow Request</Text>
-        <View style={styles.placeholder} />
       </View>
-
-      <FlatList
-        data={pendingFollowers}
-        keyExtractor={(item) => item.userId?.toString() || `pending-${item.nickname}`}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>대기 중인 팔로우 요청이 없습니다.</Text>
-            <Text style={styles.emptySubText}>새로운 팔로우 요청이 오면 여기에 표시됩니다.</Text>
-          </View>
-        }
-      />
-      <BottomButtons />
-    </SafeAreaView>
+    </SafeScreen>
   );
 }
 

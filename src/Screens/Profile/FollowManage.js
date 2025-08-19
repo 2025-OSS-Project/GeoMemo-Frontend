@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StatusBar } from 'expo-status-bar';
 import Follower from './Follower';
 import Following from './Following';
 import { getFollowersList, getFollowingList, getFollowersCount, getFollowingCount } from '../../config/api';
+import SafeScreen from '../../utils/SafeScreen';
 
 export default function FollowManage() {
   const navigation = useNavigation();
@@ -113,15 +115,17 @@ export default function FollowManage() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* 헤더 */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color="black" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{userNickname}</Text>
-        <View style={styles.placeholder} />
-      </View>
+    <SafeScreen>
+      <StatusBar style="dark" translucent={true} />
+      <View style={styles.container}>
+        {/* 헤더 */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={24} color="black" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{userNickname}</Text>
+          <View style={styles.placeholder} />
+        </View>
 
       {/* 탭 버튼들 */}
       <View style={styles.tabContainer}>
@@ -159,7 +163,8 @@ export default function FollowManage() {
           />
         )}
       </View>
-    </SafeAreaView>
+      </View>
+    </SafeScreen>
   );
 }
 
