@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getMemos } from '../../config/api';
-import { AntDesign } from '@expo/vector-icons';
+import { AntDesign, MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function AllMemo() {
   const navigation = useNavigation();
@@ -24,12 +24,22 @@ export default function AllMemo() {
       
       if (result.success && result.data) {
         setMemos(result.data);
+      } else if (result.success && result.data && result.data.length === 0) {
+        // 메모가 없는 경우 (에러가 아님)
+        setMemos([]);
+        setError(null);
       } else {
         setError('메모 목록을 가져올 수 없습니다.');
       }
-         } catch (error) {
-       setError(`메모 목록 조회 실패: ${error.message}`);
-     } finally {
+    } catch (error) {
+      // 메모가 없는 경우는 에러로 처리하지 않음
+      if (error.message.includes('메모가 없습니다')) {
+        setMemos([]);
+        setError(null);
+      } else {
+        setError(`메모 목록 조회 실패: ${error.message}`);
+      }
+    } finally {
       setIsLoading(false);
     }
   };
@@ -82,7 +92,9 @@ export default function AllMemo() {
     <ScrollView contentContainerStyle={styles.memoList}>
       {memos.length === 0 ? (
         <View style={styles.emptyContainer}>
+          <MaterialCommunityIcons name="note-text-outline" size={48} color="#ccc" style={{ marginBottom: 16 }} />
           <Text style={styles.emptyText}>메모가 없습니다</Text>
+          <Text style={styles.emptySubText}>아직 작성된 메모가 없어요</Text>
         </View>
       ) : (
         memos.map((memo) => (
@@ -188,9 +200,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
+    minHeight: 300,
   },
   emptyText: {
     fontSize: 18,
     color: '#666',
+    marginBottom: 8,
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
   },
 });

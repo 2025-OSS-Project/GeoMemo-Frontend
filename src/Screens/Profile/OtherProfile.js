@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
@@ -158,6 +158,13 @@ export default function OtherProfile() {
 
       // API를 통해 다른 사용자 정보 조회
       const userData = await getUserInfoById(otherUserId, userToken);
+      
+      // 사용자를 찾을 수 없는 경우 처리
+      if (!userData.success && userData.message === '사용자를 찾을 수 없습니다') {
+        Alert.alert('오류', '존재하지 않는 사용자입니다.');
+        navigation.goBack();
+        return;
+      }
       
       // 팔로잉/팔로워 수를 별도로 조회하여 업데이트
       try {
@@ -388,7 +395,9 @@ export default function OtherProfile() {
   if (!userInfo) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>사용자 정보를 찾을 수 없습니다.</Text>
+        <MaterialCommunityIcons name="account-question-outline" size={48} color="#ccc" style={{ marginBottom: 16 }} />
+        <Text style={styles.errorText}>사용자를 찾을 수 없습니다</Text>
+        <Text style={styles.errorSubText}>존재하지 않는 사용자이거나 삭제된 계정일 수 있어요</Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => navigation.goBack()}>
           <Text style={styles.retryButtonText}>돌아가기</Text>
         </TouchableOpacity>
@@ -632,10 +641,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff',
+    padding: 40,
   },
   errorText: {
-    fontSize: 16,
-    color: '#f00',
+    fontSize: 18,
+    color: '#666',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorSubText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
     marginBottom: 20,
   },
   retryButton: {

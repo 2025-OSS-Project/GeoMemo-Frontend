@@ -185,11 +185,17 @@ function Home() {
       console.log('장소 추천 API 호출 시작:', { latitude: location.latitude, longitude: location.longitude });
       
       // POST API 호출만 수행 (실제 장소 정보는 별도 GET API에서 받아옴)
-      await recommendPlaces(location.latitude, location.longitude, 3, userToken);
+      const result = await recommendPlaces(location.latitude, location.longitude, 3, userToken);
       
-      // API 호출 성공 시 기본값으로 destination 설정
-      setDestination({ latitude: 37.5665, longitude: 126.9780 });
-      console.log('✅ 장소 추천 API 호출 완료, 기본값으로 destination 설정');
+      if (result.success) {
+        // API 호출 성공 시 기본값으로 destination 설정
+        setDestination({ latitude: 37.5665, longitude: 126.9780 });
+        console.log('✅ 장소 추천 API 호출 완료, 기본값으로 destination 설정');
+      } else {
+        // 추천 장소가 없는 경우에도 기본값 설정
+        setDestination({ latitude: 37.5665, longitude: 126.9780 });
+        console.log('📝 추천 장소가 없습니다');
+      }
       
     } catch (error) {
       console.error('❌ 장소 추천 API 호출 실패:', error.message);
@@ -209,9 +215,19 @@ function Home() {
       console.log('추천 장소 목록 가져오기 시작');
       
       // userId는 임시로 1로 설정 (실제로는 사용자 정보에서 가져와야 함)
-      const data = await getRecommendations(1, userToken);
-      setRecommendations(data);
-      console.log('✅ 추천 장소 목록 가져오기 완료:', data);
+      const result = await getRecommendations(1, userToken);
+      
+      if (result.success && result.data) {
+        setRecommendations(result);
+        console.log('✅ 추천 장소 목록 가져오기 완료:', result);
+      } else if (result.success && result.data && result.data.length === 0) {
+        // 추천 장소가 없는 경우 (에러가 아님)
+        setRecommendations({ items: [] });
+        console.log('📝 추천 장소가 없습니다');
+      } else {
+        setRecommendations(null);
+        console.log('❌ 추천 장소 목록을 가져올 수 없습니다');
+      }
       
     } catch (error) {
       console.error('❌ 추천 장소 목록 가져오기 실패:', error.message);

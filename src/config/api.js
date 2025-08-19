@@ -1,6 +1,38 @@
 // API 설정 파일
 import axios from 'axios';
 
+// 회원가입 관련 오류코드 상수
+export const USER_ERROR_CODES = {
+  // 필수 입력값 누락
+  USR_001: 'USR_001',
+  // 유효하지 않은 이메일 형식
+  USR_002: 'USR_002',
+  // 비밀번호 형식 오류
+  USR_003: 'USR_003',
+  // 이미 존재하는 사용자명 (중복 아이디)
+  USR_004: 'USR_004',
+  // 이미 사용 중인 이메일
+  USR_005: 'USR_005',
+  // 닉네임 길이 초과
+  USR_006: 'USR_006',
+  // 전화번호 형식 오류
+  USR_007: 'USR_007',
+  // 서버 내부 오류
+  USR_999: 'USR_999'
+};
+
+// 오류코드별 사용자 친화적인 메시지
+export const USER_ERROR_MESSAGES = {
+  [USER_ERROR_CODES.USR_001]: '필수 입력값이 누락되었습니다 (사용자명, 비밀번호 등)',
+  [USER_ERROR_CODES.USR_002]: '유효하지 않은 이메일 형식입니다',
+  [USER_ERROR_CODES.USR_003]: '비밀번호 형식이 올바르지 않습니다 (너무 짧거나 조건 미달)',
+  [USER_ERROR_CODES.USR_004]: '이미 존재하는 사용자명입니다 (중복 아이디)',
+  [USER_ERROR_CODES.USR_005]: '이미 사용 중인 이메일입니다',
+  [USER_ERROR_CODES.USR_006]: '닉네임 길이가 제한을 초과했습니다',
+  [USER_ERROR_CODES.USR_007]: '전화번호 형식이 올바르지 않습니다',
+  [USER_ERROR_CODES.USR_999]: '서버 내부 오류가 발생했습니다 (DB 문제 등)'
+};
+
 export const API_CONFIG = {
   // 개발 환경 (새로운 백엔드 서버)
   development: {
@@ -227,6 +259,26 @@ export const getMemos = async (page = 1, limit = 10, userToken = null) => {
     });
 
     if (!response.ok) {
+      // 404 에러는 메모가 없다는 의미이므로 빈 배열 반환
+      if (response.status === 404) {
+        console.log('📝 메모가 없습니다');
+        return {
+          success: true,
+          data: [],
+          message: '메모가 없습니다'
+        };
+      }
+      
+      // 204 No Content도 메모가 없다는 의미
+      if (response.status === 204) {
+        console.log('📝 메모가 없습니다 (204 No Content)');
+        return {
+          success: true,
+          data: [],
+          message: '메모가 없습니다'
+        };
+      }
+      
       let errorMessage = `HTTP error! status: ${response.status}`;
       
       try {
@@ -532,22 +584,112 @@ export const signUp = async (userData) => {
     });
 
     if (!response.ok) {
-      let errorMessage = `HTTP error! status: ${response.status}`;
+      let errorData = null;
       
       try {
-        const errorData = await response.json();
-        errorMessage = errorData.detail || errorData.error || errorMessage;
+        errorData = await response.json();
+        console.error('회원가입 에러 응답:', errorData);
+        console.error('에러 응답 전체 구조:', JSON.stringify(errorData, null, 2));
+        console.error('에러 응답 키들:', Object.keys(errorData || {}));
       } catch (parseError) {
         // JSON 파싱 실패 시 텍스트로 읽기 시도
         try {
           const errorText = await response.text();
-          errorMessage = `Server response: ${errorText}`;
+          console.error('회원가입 에러 텍스트:', errorText);
+          errorData = { detail: errorText };
         } catch (textError) {
-          errorMessage = `HTTP error! status: ${response.status}`;
+          errorData = { detail: `HTTP error! status: ${response.status}` };
+        }
+      }
+
+      // HTTP 상태 코드별 사용자 친화적인 에러 메시지 (오류코드 테이블 참고)
+      let errorMessage = '회원가입에 실패했습니다';
+      let errorCode = null;
+      
+      // 다양한 오류 코드 필드명 확인
+      const errorCodeStr = errorData?.errorCode || errorData?.error_code || errorData?.code || errorData?.errorCode || '';
+      const detail = errorData?.detail || errorData?.message || errorData?.error || '';
+      
+      console.error('추출된 오류 코드:', errorCodeStr);
+      console.error('추출된 상세 메시지:', detail);
+      
+      if (response.status === 400) {
+        // 잘못된 요청 데이터
+        
+        // 오류코드별 구체적인 메시지 처리
+        if (errorCodeStr === USER_ERROR_CODES.USR_001) {
+          errorMessage = USER_ERROR_MESSAGES[USER_ERROR_CODES.USR_001];
+          errorCode = USER_ERROR_CODES.USR_001;
+        } else if (errorCodeStr === USER_ERROR_CODES.USR_002) {
+          errorMessage = USER_ERROR_MESSAGES[USER_ERROR_CODES.USR_002];
+          errorCode = USER_ERROR_CODES.USR_002;
+        } else if (errorCodeStr === USER_ERROR_CODES.USR_003) {
+          errorMessage = USER_ERROR_MESSAGES[USER_ERROR_CODES.USR_003];
+          errorCode = USER_ERROR_CODES.USR_003;
+        } else if (errorCodeStr === USER_ERROR_CODES.USR_006) {
+          errorMessage = USER_ERROR_MESSAGES[USER_ERROR_CODES.USR_006];
+          errorCode = USER_ERROR_CODES.USR_006;
+        } else if (errorCodeStr === USER_ERROR_CODES.USR_007) {
+          errorMessage = USER_ERROR_MESSAGES[USER_ERROR_CODES.USR_007];
+          errorCode = USER_ERROR_CODES.USR_007;
+        } else {
+          // 기존 로직 유지 (오류코드가 없는 경우)
+          if (detail.includes('email') || detail.includes('이메일')) {
+            errorMessage = '이미 사용 중인 이메일입니다';
+          } else if (detail.includes('nickname') || detail.includes('닉네임')) {
+            errorMessage = '이미 사용 중인 닉네임입니다';
+          } else if (detail.includes('phone') || detail.includes('전화번호')) {
+            errorMessage = '이미 사용 중인 전화번호입니다';
+          } else if (detail.includes('password') || detail.includes('비밀번호')) {
+            errorMessage = '비밀번호 형식이 올바르지 않습니다';
+          } else {
+            errorMessage = '입력 정보를 확인해주세요';
+          }
+        }
+      } else if (response.status === 409) {
+        // 충돌 (중복된 데이터)
+        
+        if (errorCodeStr === USER_ERROR_CODES.USR_004) {
+          errorMessage = USER_ERROR_MESSAGES[USER_ERROR_CODES.USR_004];
+          errorCode = USER_ERROR_CODES.USR_004;
+        } else if (errorCodeStr === USER_ERROR_CODES.USR_005) {
+          errorMessage = USER_ERROR_MESSAGES[USER_ERROR_CODES.USR_005];
+          errorCode = USER_ERROR_CODES.USR_005;
+        } else {
+          // 기존 로직 유지
+          if (detail.includes('email') || detail.includes('이메일')) {
+            errorMessage = '이미 사용 중인 이메일입니다';
+          } else if (detail.includes('nickname') || detail.includes('닉네임')) {
+            errorMessage = '이미 사용 중인 닉네임입니다';
+          } else if (detail.includes('phone') || detail.includes('전화번호')) {
+            errorMessage = '이미 사용 중인 전화번호입니다';
+          } else {
+            errorMessage = '이미 존재하는 계정입니다';
+          }
+        }
+      } else if (response.status === 422) {
+        // 유효성 검증 실패
+        errorMessage = '입력 정보가 올바르지 않습니다';
+      } else if (response.status >= 500) {
+        // 서버 내부 오류
+        if (errorCodeStr === USER_ERROR_CODES.USR_999) {
+          errorMessage = USER_ERROR_MESSAGES[USER_ERROR_CODES.USR_999];
+          errorCode = USER_ERROR_CODES.USR_999;
+        } else {
+          errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요';
         }
       }
       
-      throw new Error(errorMessage);
+      console.error('최종 오류 메시지:', errorMessage);
+      console.error('최종 오류 코드:', errorCode);
+      
+      const error = new Error(errorMessage);
+      error.status = response.status;
+      error.detail = detail;
+      if (errorCode) {
+        error.errorCode = errorCode;
+      }
+      throw error;
     }
 
     let result;
@@ -614,48 +756,59 @@ export const signIn = async (credentials) => {
         }
       }
 
-      // 401 응답에 대한 세부적인 에러 처리
+      // 401 응답에 대한 에러 처리 (구체적인 오류 내용 노출 방지)
       if (response.status === 401) {
         const detail = errorData?.detail || '';
         
-        // 이메일 인증이 필요한 경우
+        // 이메일 인증이 필요한 경우만 구체적으로 처리
         if (detail.includes('이메일 인증') || detail.includes('email verification') || detail.includes('verification')) {
-          const error = new Error('EMAIL_VERIFICATION_REQUIRED');
+          const error = new Error('이메일 인증이 필요합니다');
           error.status = 401;
           error.detail = detail;
           error.type = 'EMAIL_VERIFICATION';
           throw error;
         }
         
-        // 잘못된 자격증명 (이메일/비밀번호 오류)
-        if (detail.includes('invalid credentials') || detail.includes('Invalid credentials') || detail.includes('잘못된')) {
-          const error = new Error('INVALID_CREDENTIALS');
-          error.status = 401;
-          error.detail = detail;
-          error.type = 'INVALID_CREDENTIALS';
-          throw error;
-        }
-        
-        // 기타 401 에러
-        const error = new Error('UNAUTHORIZED');
+        // 기타 401 에러는 일반적인 로그인 실패 메시지로 처리 (보안상 구체적인 내용 노출 방지)
+        const error = new Error('로그인에 실패했습니다. 입력 정보를 확인해주세요');
         error.status = 401;
         error.detail = detail;
-        error.type = 'UNAUTHORIZED';
+        error.type = 'INVALID_CREDENTIALS';
         throw error;
       }
       
       // 403 응답 (가입 필요)
       if (response.status === 403) {
-        const error = new Error('REGISTRATION_REQUIRED');
+        const error = new Error('계정이 존재하지 않습니다. 회원가입을 진행해주세요');
         error.status = 403;
         error.detail = errorData?.detail || '가입이 필요합니다';
         error.type = 'REGISTRATION_REQUIRED';
         throw error;
       }
       
-      // 기타 에러
-      const errorMessage = errorData?.detail || errorData?.error || errorData?.message || `HTTP error! status: ${response.status}`;
-      throw new Error(errorMessage);
+      // 404 응답 (계정을 찾을 수 없음)
+      if (response.status === 404) {
+        const error = new Error('계정을 찾을 수 없습니다. 회원가입을 진행해주세요');
+        error.status = 404;
+        error.detail = errorData?.detail || '계정이 존재하지 않습니다';
+        error.type = 'REGISTRATION_REQUIRED';
+        throw error;
+      }
+      
+      // 기타 에러 - 더 사용자 친화적인 메시지로 변환
+      let errorMessage = '로그인에 실패했습니다';
+      if (response.status >= 500) {
+        errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요';
+      } else if (response.status === 400) {
+        errorMessage = '입력 정보를 확인해주세요';
+      } else if (response.status === 429) {
+        errorMessage = '요청이 너무 많습니다. 잠시 후 다시 시도해주세요';
+      }
+      
+      const error = new Error(errorMessage);
+      error.status = response.status;
+      error.detail = errorData?.detail || errorData?.error || errorData?.message || errorMessage;
+      throw error;
     }
 
     let result;
@@ -1169,6 +1322,24 @@ export const getUserInfoById = async (userId, userToken = null) => {
     });
 
     if (!response.ok) {
+      // 404 에러는 사용자가 존재하지 않는다는 의미이므로 적절한 메시지 반환
+      if (response.status === 404) {
+        console.log('📝 사용자를 찾을 수 없습니다');
+        return {
+          success: false,
+          message: '사용자를 찾을 수 없습니다'
+        };
+      }
+      
+      // 204 No Content도 사용자가 존재하지 않는다는 의미
+      if (response.status === 204) {
+        console.log('📝 사용자를 찾을 수 없습니다 (204 No Content)');
+        return {
+          success: false,
+          message: '사용자를 찾을 수 없습니다'
+        };
+      }
+      
       let errorMessage = `HTTP error! status: ${response.status}`;
       
       try {
@@ -1421,20 +1592,48 @@ export const sendEmailVerification = async (email) => {
     });
 
     if (!response.ok) {
-      let errorMessage = `HTTP error! status: ${response.status}`;
+      let errorData = null;
       
       try {
-        const errorData = await response.json();
-        if (response.status === 422 && errorData.detail) {
-          errorMessage = errorData.detail.map(err => err.msg || err.message).join(', ');
-        } else {
-          errorMessage = errorData.detail || errorData.error || errorMessage;
-        }
+        errorData = await response.json();
+        console.error('이메일 인증 코드 발송 에러 응답:', errorData);
       } catch (parseError) {
-        errorMessage = `Server response error`;
+        // JSON 파싱 실패 시 텍스트로 읽기 시도
+        try {
+          const errorText = await response.text();
+          console.error('이메일 인증 코드 발송 에러 텍스트:', errorText);
+          errorData = { detail: errorText };
+        } catch (textError) {
+          errorData = { detail: `HTTP error! status: ${response.status}` };
+        }
+      }
+
+      // HTTP 상태 코드별 사용자 친화적인 에러 메시지
+      let errorMessage = '이메일 인증 코드 발송에 실패했습니다';
+      
+      if (response.status === 400) {
+        // 잘못된 요청
+        errorMessage = '이메일 주소를 확인해주세요';
+      } else if (response.status === 422) {
+        // 유효성 검증 실패
+        if (errorData?.detail && Array.isArray(errorData.detail)) {
+          const validationErrors = errorData.detail.map(err => err.msg || err.message).join(', ');
+          errorMessage = `입력 정보 오류: ${validationErrors}`;
+        } else {
+          errorMessage = '이메일 형식이 올바르지 않습니다';
+        }
+      } else if (response.status === 429) {
+        // 요청 제한
+        errorMessage = '요청이 너무 많습니다. 잠시 후 다시 시도해주세요';
+      } else if (response.status >= 500) {
+        // 서버 오류
+        errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요';
       }
       
-      throw new Error(errorMessage);
+      const error = new Error(errorMessage);
+      error.status = response.status;
+      error.detail = errorData?.detail || errorData?.error || errorData?.message || errorMessage;
+      throw error;
     }
 
     const result = await response.json();
@@ -1664,6 +1863,26 @@ export const getScrapMemos = async (userToken) => {
     });
     
     if (!response.ok) {
+      // 404 에러는 스크랩 메모가 없다는 의미이므로 빈 배열 반환
+      if (response.status === 404) {
+        console.log('📝 스크랩 메모가 없습니다');
+        return {
+          success: true,
+          data: [],
+          message: '스크랩한 메모가 없습니다'
+        };
+      }
+      
+      // 204 No Content도 스크랩 메모가 없다는 의미
+      if (response.status === 204) {
+        console.log('📝 스크랩 메모가 없습니다 (204 No Content)');
+        return {
+          success: true,
+          data: [],
+          message: '스크랩한 메모가 없습니다'
+        };
+      }
+      
       let errorMessage = `HTTP error! status: ${response.status}`;
       try {
         const errorData = await response.json();
@@ -2417,6 +2636,26 @@ export const recommendPlaces = async (userLatitude, userLongitude, top = 3, user
     });
 
     if (!response.ok) {
+      // 404 에러는 추천 장소가 없다는 의미이므로 성공으로 처리
+      if (response.status === 404) {
+        console.log('📝 추천 장소가 없습니다');
+        return {
+          success: true,
+          data: [],
+          message: '추천 장소가 없습니다'
+        };
+      }
+      
+      // 204 No Content도 추천 장소가 없다는 의미
+      if (response.status === 204) {
+        console.log('📝 추천 장소가 없습니다 (204 No Content)');
+        return {
+          success: true,
+          data: [],
+          message: '추천 장소가 없습니다'
+        };
+      }
+      
       let errorMessage = `HTTP error! status: ${response.status}`;
       
       try {
@@ -2482,6 +2721,26 @@ export const getRecommendations = async (userId, userToken = null) => {
     });
 
     if (!response.ok) {
+      // 404 에러는 추천 장소가 없다는 의미이므로 빈 배열 반환
+      if (response.status === 404) {
+        console.log('📝 추천 장소가 없습니다');
+        return {
+          success: true,
+          data: [],
+          message: '추천 장소가 없습니다'
+        };
+      }
+      
+      // 204 No Content도 추천 장소가 없다는 의미
+      if (response.status === 204) {
+        console.log('📝 추천 장소가 없습니다 (204 No Content)');
+        return {
+          success: true,
+          data: [],
+          message: '추천 장소가 없습니다'
+        };
+      }
+      
       let errorMessage = `HTTP error! status: ${response.status}`;
       
       try {
