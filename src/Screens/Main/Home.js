@@ -454,37 +454,48 @@ function Home() {
   // 화면에 포커스가 돌아왔을 때 최적화 (필요한 경우에만 실행)
   useFocusEffect(
     useCallback(() => {
-      // 사용자 정보 가져오기
-      const loadUserInfo = async () => {
-        console.log('🔍 loadUserInfo 호출됨');
-        console.log('userToken:', userToken ? '있음' : '없음');
-        console.log('myUser:', myUser);
-        
+      // 사용자 정보 가져오기 (기존 함수 제거 - loadDataAfterUserInfo에서 처리)
+
+      // 사용자 정보 로드 후 인사이트와 메모 데이터 가져오기
+      const loadDataAfterUserInfo = async () => {
         if (userToken && !myUser) {
           try {
             console.log('✅ getCurrentUserInfo API 호출 시작');
             const userInfo = await getCurrentUserInfo(userToken);
             console.log('✅ 사용자 정보 받아옴:', userInfo);
             setMyUser(userInfo);
+            
+            // 사용자 정보 로드 완료 후 데이터 가져오기
+            if (userInfo?.user_id) {
+              // 홈 화면으로 돌아왔을 때 메모 데이터 새로 불러오기 (필터 변경이 아닌 경우에만)
+              if (!route.params?.filterChanged) {
+                fetchAllMemos();
+              }
+              
+              // 인사이트 데이터 가져오기 (user_id 사용)
+              try {
+                setIsLoadingInsights(true);
+                const insightsData = await getUserInsights(userInfo.user_id, userToken);
+                setInsights(insightsData);
+              } catch (error) {
+                console.error('인사이트 로드 실패:', error);
+              } finally {
+                setIsLoadingInsights(false);
+              }
+            }
           } catch (error) {
             console.error('사용자 정보 로드 실패:', error);
           }
-        } else {
-          console.log('❌ 사용자 정보 로드 조건 불충족');
+        } else if (userToken && myUser?.user_id) {
+          // 이미 사용자 정보가 있는 경우
+          if (!route.params?.filterChanged) {
+            fetchAllMemos();
+          }
+          fetchInsights();
         }
       };
 
-      loadUserInfo();
-
-      // 홈 화면으로 돌아왔을 때 메모 데이터 새로 불러오기 (필터 변경이 아닌 경우에만)
-      if (userToken && !route.params?.filterChanged) {
-        fetchAllMemos();
-      }
-      
-      // 인사이트 데이터 가져오기
-      if (userToken && myUser?.id) {
-        fetchInsights();
-      }
+      loadDataAfterUserInfo();
       
       // 홈 화면으로 돌아왔을 때 위치 정보 빠르게 업데이트
       const refreshLocation = route.params?.refreshLocation;
@@ -546,7 +557,7 @@ function Home() {
       if (route.params?.filterChanged) {
         navigation.setParams({ filterChanged: false });
       }
-    }, [location, route.params?.refreshLocation, route.params?.filterChanged, navigation, userToken, fetchAllMemos, mapBounds, myUser])
+    }, [location, route.params?.refreshLocation, route.params?.filterChanged, navigation, userToken, fetchAllMemos, mapBounds, myUser?.user_id])
   );
 
   const goToCurrentLocation = useCallback(() => {
@@ -629,31 +640,31 @@ function Home() {
 
   // 인사이트 가져오기
   const fetchInsights = useCallback(async () => {
-    if (!userToken || !myUser?.id) return;
+    if (!userToken || !myUser?.user_id) return;
     
     try {
       setIsLoadingInsights(true);
-      const insightsData = await getUserInsights(myUser.id, userToken);
+      const insightsData = await getUserInsights(myUser.user_id, userToken);
       setInsights(insightsData);
     } catch (error) {
       console.error('인사이트 로드 실패:', error);
     } finally {
       setIsLoadingInsights(false);
     }
-  }, [userToken, myUser?.id]);
+  }, [userToken, myUser?.user_id]);
 
   // 주간인사이트 클릭 시 프로필의 인사이트 탭으로 이동
   const handleInsightsPress = useCallback(async () => {
     console.log('🔍 handleInsightsPress 호출됨');
     console.log('myUser:', myUser);
-    console.log('myUser?.id:', myUser?.id);
+    console.log('myUser?.user_id:', myUser?.user_id);
     
     try {
-      // myUser.id가 있으면 사용, 없으면 현재 사용자 정보에서 가져오기
-      let userId = myUser?.id;
+      // myUser.user_id가 있으면 사용, 없으면 현재 사용자 정보에서 가져오기
+      let userId = myUser?.user_id;
       
       if (!userId && userToken) {
-        console.log('🔍 myUser.id가 없어서 getCurrentUserInfo API 호출');
+        console.log('🔍 myUser.user_id가 없어서 getCurrentUserInfo API 호출');
         const userInfo = await getCurrentUserInfo(userToken);
         userId = userInfo?.user_id;
         console.log('✅ API에서 가져온 userId:', userId);
@@ -673,7 +684,7 @@ function Home() {
       console.error('❌ handleInsightsPress 오류:', error);
       Alert.alert('오류', '네비게이션 중 오류가 발생했습니다.');
     }
-  }, [navigation, myUser?.id, userToken]);
+  }, [navigation, myUser?.user_id, userToken]);
 
 
 
