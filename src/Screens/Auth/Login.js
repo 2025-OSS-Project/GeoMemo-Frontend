@@ -50,26 +50,22 @@ export default function Login() {
 
       const result = await signIn(credentials);
       
-      console.log('로그인 응답 결과:', result);
-      console.log('응답 타입:', typeof result);
-      console.log('응답 키들:', Object.keys(result));
+      // 로그인 성공 시에만 콘솔 출력
+      console.log('로그인 성공! 홈 화면으로 이동합니다.');
       
       // 다양한 토큰 필드명 지원
       let token = null;
       if (result.access_token) {
         token = result.access_token;
-        console.log('✅ access_token으로 토큰 획득');
       } else if (result.token) {
         token = result.token;
-        console.log('✅ token으로 토큰 획득');
       } else if (result.accessToken) {
         token = result.accessToken;
-        console.log('✅ accessToken으로 토큰 획득');
       } else if (result.data && result.data.access_token) {
         token = result.data.access_token;
-        console.log('✅ result.data.access_token으로 토큰 획득');
       } else {
-        console.warn('⚠️ 토큰을 찾을 수 없음. 전체 응답:', JSON.stringify(result, null, 2));
+        // 토큰을 찾을 수 없는 경우만 경고 출력
+        console.warn('토큰을 찾을 수 없습니다. 응답 구조를 확인해주세요.');
         Alert.alert('오류', '서버에서 토큰을 받지 못했습니다. 관리자에게 문의하세요.');
         return;
       }
@@ -77,8 +73,7 @@ export default function Login() {
       if (token) {
         // 로그인 성공 - 즉시 화면 전환 (모든 백그라운드 작업 연기)
         const navigationStartTime = performance.now();
-        console.log('로그인 성공! 홈 화면으로 즉시 이동...');
-        console.log('토큰 길이:', token.length);
+        console.log('홈 화면으로 즉시 이동...');
         
         // 즉시 화면 전환 (사용자 경험 최우선)
         navigation.navigate('MemoMap');
@@ -91,25 +86,28 @@ export default function Login() {
           try {
             // 토큰 저장
             await AsyncStorage.setItem('userToken', token);
-            console.log('✅ 토큰 저장 완료');
+            console.log('토큰 저장 완료');
             
             // 저장된 토큰 확인
             const savedToken = await AsyncStorage.getItem('userToken');
-            console.log('저장된 토큰 확인:', savedToken ? '성공' : '실패');
-            console.log('저장된 토큰 길이:', savedToken ? savedToken.length : 0);
+            if (savedToken) {
+              console.log('토큰 저장 확인: 성공');
+            } else {
+              console.warn('토큰 저장 확인: 실패');
+            }
             
             // 토큰 유효성 검증
             if (savedToken) {
               const isValid = await validateToken(savedToken);
               if (isValid) {
-                console.log('✅ 저장된 토큰 유효성 검증 성공');
+                console.log('토큰 유효성 검증 성공');
               } else {
-                console.warn('⚠️ 저장된 토큰이 유효하지 않음');
+                console.warn('저장된 토큰이 유효하지 않음');
                 await AsyncStorage.removeItem('userToken');
               }
             }
           } catch (error) {
-            console.error('❌ 토큰 저장 실패:', error);
+            console.error('토큰 저장 실패:', error.message);
             Alert.alert('경고', '토큰 저장에 실패했습니다. 앱을 다시 시작해주세요.');
           }
         }, 500); // 500ms 후 백그라운드에서 처리
@@ -121,7 +119,11 @@ export default function Login() {
       }
       
     } catch (error) {
-      console.error('로그인 에러 상세:', error);
+      // 로그인 실패 시 상세한 콘솔 출력 제거
+      // 개발 환경에서만 간단한 에러 정보 출력
+      if (__DEV__) {
+        console.log('로그인 실패:', error.message);
+      }
       
       // API에서 이미 사용자 친화적인 메시지를 제공하므로 직접 사용
       let errorMessage = error.message || '로그인에 실패했습니다.';
