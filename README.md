@@ -89,10 +89,8 @@ npm start
 4. **플랫폼별 실행**
 ```bash
 # Android
-npm run android
+npx expo run:android
 
-# Web
-npm run web
 ```
 
 ## 환경 설정
