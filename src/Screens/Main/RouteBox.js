@@ -87,11 +87,14 @@ const RouteBox = ({ routeSlideAnim, routePanResponder, destination, isLoadingDes
                 <ActivityIndicator size="small" color="#666" />
                 <Text style={styles.loadingText}>추천 목록 불러오는 중...</Text>
               </View>
-            ) : recommendations && recommendations.items && recommendations.items.length > 0 ? (
+            ) : recommendations && recommendations.items && Array.isArray(recommendations.items) && recommendations.items.length > 0 ? (
               recommendations.items.map((place, index) => (
-                <View key={place.placeId || index} style={styles.placeItem}>
+                <View key={place.placeId || place.id || index} style={styles.placeItem}>
                   <View style={styles.placeInfo}>
-                    <Text style={styles.placeName}>{place.name}</Text>
+                    <Text style={styles.placeName}>{place.name || place.placeName || `장소 ${index + 1}`}</Text>
+                    {place.address && (
+                      <Text style={styles.placeAddress}>{place.address}</Text>
+                    )}
                   </View>
                   <TouchableOpacity 
                     style={styles.placeDirectionsButton}
@@ -195,6 +198,12 @@ const styles = StyleSheet.create({
     fontWeight: '600', // 600 유지
     color: '#333',
     letterSpacing: 0.3, // 글자 간격 추가
+  },
+  placeAddress: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+    fontWeight: '400',
   },
   placeDirectionsButton: {
     padding: 6, // 8에서 6으로 줄임
