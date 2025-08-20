@@ -5,8 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
-  StatusBar,
   FlatList,
   Image,
   Keyboard,
@@ -15,7 +13,9 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StatusBar } from 'expo-status-bar';
 import { searchUsers, generatePresignedGetUrl } from '../../config/api';
+import SafeScreen from '../../utils/SafeScreen';
 
 // Presigned URL을 사용하여 프로필 이미지를 표시하는 컴포넌트
 const ProfileImageWithPresignedUrl = ({ profileUrl }) => {
@@ -220,113 +220,109 @@ export default function UserSearch() {
   );
 
   return (
-    <View style={styles.container}>
-      <StatusBar 
-        barStyle="dark-content" 
-        backgroundColor="#fff" 
-        translucent={false}
-        animated={true}
-      />
-      
-      {/* 상단 검색 바 */}
-      <View style={styles.header}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={18} color="#8e8e93" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder={searchType === 'nickname' ? '닉네임 검색' : '이메일 검색'}
-            placeholderTextColor="#8e8e93"
-            value={searchText}
-            onChangeText={handleSearch}
-            autoFocus={true}
-          />
+    <SafeScreen>
+      <StatusBar style="dark" translucent={true} />
+      <View style={styles.container}>
+        {/* 상단 검색 바 */}
+        <View style={styles.header}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={18} color="#8e8e93" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder={searchType === 'nickname' ? '닉네임 검색' : '이메일 검색'}
+              placeholderTextColor="#8e8e93"
+              value={searchText}
+              onChangeText={handleSearch}
+              autoFocus={true}
+            />
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.cancelButton}
+            onPress={() => {
+              // 키보드 닫기
+              Keyboard.dismiss();
+              // 키보드가 완전히 사라진 후 네비게이션
+              setTimeout(() => {
+                if (navigation.canGoBack()) {
+                  navigation.goBack();
+                }
+              }, 100);
+            }}
+          >
+            <Text style={styles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
         </View>
-        
-        <TouchableOpacity 
-          style={styles.cancelButton}
-          onPress={() => {
-            // 키보드 닫기
-            Keyboard.dismiss();
-            // 키보드가 완전히 사라진 후 네비게이션
-            setTimeout(() => {
-              if (navigation.canGoBack()) {
-                navigation.goBack();
+
+        {/* 검색 타입 선택 */}
+        <View style={styles.searchTypeContainer}>
+          <TouchableOpacity 
+            style={[
+              styles.searchTypeButton, 
+              styles.firstButton,
+              searchType === 'nickname' && styles.activeSearchType
+            ]}
+            onPress={() => {
+              setSearchType('nickname');
+              // 검색어가 있으면 새로운 타입으로 재검색
+              if (searchText.trim()) {
+                performSearch(searchText, 'nickname');
               }
-            }, 100);
-          }}
-        >
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
+            }}
+          >
+            <Text style={[styles.searchTypeText, searchType === 'nickname' && styles.activeSearchTypeText]}>
+              닉네임
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[
+              styles.searchTypeButton, 
+              styles.lastButton,
+              searchType === 'email' && styles.activeSearchType
+            ]}
+            onPress={() => {
+              setSearchType('email');
+              // 검색어가 있으면 새로운 타입으로 재검색
+              if (searchText.trim()) {
+                performSearch(searchText, 'email');
+              }
+            }}
+          >
+            <Text style={[styles.searchTypeText, searchType === 'email' && styles.activeSearchTypeText]}>
+              이메일
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* 검색 타입 선택 */}
-      <View style={styles.searchTypeContainer}>
-        <TouchableOpacity 
-          style={[
-            styles.searchTypeButton, 
-            styles.firstButton,
-            searchType === 'nickname' && styles.activeSearchType
-          ]}
-          onPress={() => {
-            setSearchType('nickname');
-            // 검색어가 있으면 새로운 타입으로 재검색
-            if (searchText.trim()) {
-              performSearch(searchText, 'nickname');
-            }
-          }}
-        >
-          <Text style={[styles.searchTypeText, searchType === 'nickname' && styles.activeSearchTypeText]}>
-            닉네임
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[
-            styles.searchTypeButton, 
-            styles.lastButton,
-            searchType === 'email' && styles.activeSearchType
-          ]}
-          onPress={() => {
-            setSearchType('email');
-            // 검색어가 있으면 새로운 타입으로 재검색
-            if (searchText.trim()) {
-              performSearch(searchText, 'email');
-            }
-          }}
-        >
-          <Text style={[styles.searchTypeText, searchType === 'email' && styles.activeSearchTypeText]}>
-            이메일
-          </Text>
-        </TouchableOpacity>
+        {/* 검색 결과 */}
+        <View style={styles.content}>
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>검색 중...</Text>
+            </View>
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : searchResults.length > 0 ? (
+            <FlatList
+              data={searchResults}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={renderUserItem}
+              showsVerticalScrollIndicator={false}
+            />
+          ) : searchText.trim() ? (
+            <View style={styles.noResults}>
+              <Text style={styles.noResultsText}>검색 결과가 없습니다</Text>
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>사용자를 검색해보세요</Text>
+            </View>
+          )}
+        </View>
       </View>
-
-      {/* 검색 결과 */}
-      <View style={styles.content}>
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>검색 중...</Text>
-          </View>
-        ) : error ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : searchResults.length > 0 ? (
-          <FlatList
-            data={searchResults}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={renderUserItem}
-            showsVerticalScrollIndicator={false}
-          />
-        ) : searchText.trim() ? (
-          <View style={styles.noResults}>
-            <Text style={styles.noResultsText}>검색 결과가 없습니다</Text>
-          </View>
-        ) : (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>사용자를 검색해보세요</Text>
-          </View>
-        )}
-      </View>
-    </View>
+    </SafeScreen>
   );
 }
 

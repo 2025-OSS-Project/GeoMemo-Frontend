@@ -41,6 +41,9 @@ export default function Navigator() {
         // 전환 최적화
         gestureResponseDistance: 20, // 더 민감한 제스처
         gestureVelocityImpact: 0.8, // 더 빠른 제스처 반응
+        // StatusBar 설정 추가
+        statusBarStyle: 'dark',
+        contentStyle: { backgroundColor: '#FFFFFF' },
       }}
     >
       <Stack.Screen name="Login" component={Login} options={{ headerShown: false }} />

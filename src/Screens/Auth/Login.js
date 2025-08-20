@@ -7,11 +7,12 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  StatusBar,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { signIn, validateToken } from '../../config/api';
+import SafeScreen from '../../utils/SafeScreen';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -49,26 +50,22 @@ export default function Login() {
 
       const result = await signIn(credentials);
       
-      console.log('로그인 응답 결과:', result);
-      console.log('응답 타입:', typeof result);
-      console.log('응답 키들:', Object.keys(result));
+      // 로그인 성공 시에만 콘솔 출력
+      console.log('로그인 성공! 홈 화면으로 이동합니다.');
       
       // 다양한 토큰 필드명 지원
       let token = null;
       if (result.access_token) {
         token = result.access_token;
-        console.log('✅ access_token으로 토큰 획득');
       } else if (result.token) {
         token = result.token;
-        console.log('✅ token으로 토큰 획득');
       } else if (result.accessToken) {
         token = result.accessToken;
-        console.log('✅ accessToken으로 토큰 획득');
       } else if (result.data && result.data.access_token) {
         token = result.data.access_token;
-        console.log('✅ result.data.access_token으로 토큰 획득');
       } else {
-        console.warn('⚠️ 토큰을 찾을 수 없음. 전체 응답:', JSON.stringify(result, null, 2));
+        // 토큰을 찾을 수 없는 경우만 경고 출력
+        console.warn('토큰을 찾을 수 없습니다. 응답 구조를 확인해주세요.');
         Alert.alert('오류', '서버에서 토큰을 받지 못했습니다. 관리자에게 문의하세요.');
         return;
       }
@@ -76,8 +73,7 @@ export default function Login() {
       if (token) {
         // 로그인 성공 - 즉시 화면 전환 (모든 백그라운드 작업 연기)
         const navigationStartTime = performance.now();
-        console.log('로그인 성공! 홈 화면으로 즉시 이동...');
-        console.log('토큰 길이:', token.length);
+        console.log('홈 화면으로 즉시 이동...');
         
         // 즉시 화면 전환 (사용자 경험 최우선)
         navigation.navigate('MemoMap');
@@ -90,27 +86,29 @@ export default function Login() {
           try {
             // 토큰 저장
             await AsyncStorage.setItem('userToken', token);
-            console.log('✅ 토큰 저장 완료');
+            console.log('토큰 저장 완료');
             
             // 저장된 토큰 확인
             const savedToken = await AsyncStorage.getItem('userToken');
-            console.log('저장된 토큰 확인:', savedToken ? '성공' : '실패');
-            console.log('저장된 토큰 길이:', savedToken ? savedToken.length : 0);
+            if (savedToken) {
+              console.log('토큰 저장 확인: 성공');
+            } else {
+              console.warn('토큰 저장 확인: 실패');
+            }
             
             // 토큰 유효성 검증
             if (savedToken) {
               const isValid = await validateToken(savedToken);
               if (isValid) {
-                console.log('✅ 저장된 토큰 유효성 검증 성공');
+                console.log('토큰 유효성 검증 성공');
               } else {
-                console.warn('⚠️ 저장된 토큰이 유효하지 않음');
+                console.warn('저장된 토큰이 유효하지 않음');
                 await AsyncStorage.removeItem('userToken');
               }
             }
-          } catch (error) {
-            console.error('❌ 토큰 저장 실패:', error);
-            Alert.alert('경고', '토큰 저장에 실패했습니다. 앱을 다시 시작해주세요.');
-          }
+                      } catch (error) {
+              Alert.alert('경고', '토큰 저장에 실패했습니다. 앱을 다시 시작해주세요.');
+            }
         }, 500); // 500ms 후 백그라운드에서 처리
         
         const totalLoginTime = performance.now() - loginStartTime;
@@ -119,10 +117,11 @@ export default function Login() {
         Alert.alert('오류', '로그인에 실패했습니다.');
       }
       
-    } catch (error) {
-      console.error('로그인 에러 상세:', error);
+         } catch (error) {
+       // API에서 이미 사용자 친화적인 메시지를 제공하므로 직접 사용
+      let errorMessage = error.message || '로그인에 실패했습니다.';
       
-      // 새로운 에러 타입 처리
+      // 특별한 에러 타입 처리
       if (error.type === 'EMAIL_VERIFICATION') {
         // 이메일 인증이 필요한 경우
         Alert.alert(
@@ -146,11 +145,6 @@ export default function Login() {
           ]
         );
         return;
-      } else if (error.type === 'INVALID_CREDENTIALS') {
-        // 잘못된 자격증명
-        Alert.alert('로그인 실패', '이메일 또는 비밀번호가 올바르지 않습니다.');
-        setPassword(''); // 비밀번호만 초기화
-        return;
       } else if (error.type === 'REGISTRATION_REQUIRED') {
         // 가입이 필요한 경우
         Alert.alert(
@@ -172,18 +166,7 @@ export default function Login() {
         return;
       }
       
-      // 기존 에러 처리
-      let errorMessage = '로그인에 실패했습니다.';
-      if (error.message.includes('Network')) {
-        errorMessage = '네트워크 연결을 확인해주세요.';
-      } else if (error.message.includes('500')) {
-        errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
-      } else if (error.message.includes('timeout')) {
-        errorMessage = '요청 시간이 초과되었습니다. 다시 시도해주세요.';
-      } else {
-        errorMessage = error.message || '알 수 없는 오류가 발생했습니다.';
-      }
-      
+      // 일반적인 로그인 실패 - API에서 제공한 메시지 사용
       Alert.alert('로그인 실패', errorMessage);
       // 로그인 실패 시 비밀번호만 초기화
       setPassword('');
@@ -193,76 +176,78 @@ export default function Login() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      <Text style={styles.title}>GeoMemo</Text>
+    <SafeScreen>
+      <StatusBar style="dark" translucent={true} />
+      <View style={styles.container}>
+        <Text style={styles.title}>GeoMemo</Text>
 
-      <Text style={styles.label}>E-mail</Text>
-      <TextInput
-        placeholder="email@email.com"
-        placeholderTextColor="#999"
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        returnKeyType="next"
-        editable={!isLoading}
-      />
+        <Text style={styles.label}>E-mail</Text>
+        <TextInput
+          placeholder="email@email.com"
+          placeholderTextColor="#999"
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          returnKeyType="next"
+          editable={!isLoading}
+        />
 
-      <Text style={styles.label}>비밀번호</Text>
-      <TextInput
-        placeholder="비밀번호"
-        placeholderTextColor="#999"
-        style={styles.input}
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        returnKeyType="done"
-        onSubmitEditing={handleLogin}
-        editable={!isLoading}
-      />
+        <Text style={styles.label}>비밀번호</Text>
+        <TextInput
+          placeholder="비밀번호"
+          placeholderTextColor="#999"
+          style={styles.input}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          returnKeyType="done"
+          onSubmitEditing={handleLogin}
+          editable={!isLoading}
+        />
 
-      <TouchableOpacity 
-        style={[styles.loginButton, isLoading && styles.disabledButton]} 
-        onPress={handleLogin}
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color="white" />
-            <Text style={styles.loginButtonText}>로그인 중...</Text>
-          </View>
-        ) : (
-          <Text style={styles.loginButtonText}>로그인</Text>
-        )}
-      </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.loginButton, isLoading && styles.disabledButton]} 
+          onPress={handleLogin}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="white" />
+              <Text style={styles.loginButtonText}>로그인 중...</Text>
+            </View>
+          ) : (
+            <Text style={styles.loginButtonText}>로그인</Text>
+          )}
+        </TouchableOpacity>
 
-      <View style={styles.dividerContainer}>
-        <View style={styles.line} />
-        <Text style={styles.or}>또는</Text>
-        <View style={styles.line} />
-      </View>
+        <View style={styles.dividerContainer}>
+          <View style={styles.line} />
+          <Text style={styles.or}>또는</Text>
+          <View style={styles.line} />
+        </View>
 
-      <TouchableOpacity style={[styles.socialButton, styles.googleButton]} disabled={isLoading}>
-        <Text style={styles.socialText}>Google로 로그인</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={[styles.socialButton, styles.googleButton]} disabled={isLoading}>
+          <Text style={styles.socialText}>Google로 로그인</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.socialButton, styles.naverButton]} disabled={isLoading}>
-        <Text style={styles.socialText}>Naver로 로그인</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={[styles.socialButton, styles.naverButton]} disabled={isLoading}>
+          <Text style={styles.socialText}>Naver로 로그인</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.socialButton, styles.kakaoButton]} disabled={isLoading}>
-        <Text style={styles.socialText}>Kakao로 로그인</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={[styles.socialButton, styles.kakaoButton]} disabled={isLoading}>
+          <Text style={styles.socialText}>Kakao로 로그인</Text>
+        </TouchableOpacity>
 
-      <Text style={styles.bottomText}>
-        계정이 없으신가요?{' '}
-        <Text style={styles.linkText} onPress={() => navigation.navigate('SignUp')}>
-          가입하기
+        <Text style={styles.bottomText}>
+          계정이 없으신가요?{' '}
+          <Text style={styles.linkText} onPress={() => navigation.navigate('SignUp')}>
+            가입하기
+          </Text>
         </Text>
-      </Text>
-    </View>
+      </View>
+    </SafeScreen>
   );
 }
 
@@ -272,12 +257,13 @@ const styles = StyleSheet.create({
     padding: 30,
     backgroundColor: '#fff',
     justifyContent: 'center',
+    paddingTop: 0, // SafeScreen에서 이미 top safe area를 처리하므로 제거
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     alignSelf: 'center',
-    marginTop: -90,
+    marginTop: 0, // SafeScreen에서 이미 top safe area를 처리하므로 0으로 설정
     marginBottom: 40,
   },
   label: {

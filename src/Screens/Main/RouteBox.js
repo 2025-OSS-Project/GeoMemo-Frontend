@@ -1,7 +1,7 @@
 // components/RouteBox.js
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Animated, StyleSheet, ActivityIndicator, Linking, Dimensions } from 'react-native';
-import { AntDesign } from '@expo/vector-icons';
+import { AntDesign, MaterialCommunityIcons } from '@expo/vector-icons';
 import { FontAwesome6 } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
@@ -102,7 +102,11 @@ const RouteBox = ({ routeSlideAnim, routePanResponder, destination, isLoadingDes
                 </View>
               ))
             ) : (
-              <Text style={styles.noRecommendationsText}>오늘의 장소가 없네요</Text>
+              <View style={styles.emptyContainer}>
+                <MaterialCommunityIcons name="map-marker-off" size={48} color="#ccc" style={{ marginBottom: 16 }} />
+                <Text style={styles.emptyText}>오늘의 장소가 없어요</Text>
+                <Text style={styles.emptySubText}>새로운 장소를 탐험해보세요</Text>
+              </View>
             )}
           </View>
         )}
@@ -213,6 +217,22 @@ const styles = StyleSheet.create({
     color: '#666',
     paddingVertical: 8, // 10에서 8로 줄임
     fontWeight: '500', // 폰트 굵기 추가
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    padding: 20,
+    minHeight: 120,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  emptySubText: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
   },
   showButton: {
     position: 'absolute',

@@ -2,9 +2,11 @@ import React, { useState, forwardRef, useImperativeHandle, useEffect } from 'rea
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StatusBar } from 'expo-status-bar';
 import HomeButton from '../Main/HomeButton';
 import BottomButtons from '../Main/BottomButtons';
 import { getFollowersList, defollowUser, generatePresignedGetUrl } from '../../config/api';
+import SafeScreen from '../../utils/SafeScreen';
 
 // Presigned URL을 사용하여 프로필 이미지를 표시하는 컴포넌트
 const ProfileImageWithPresignedUrl = ({ profileUrl }) => {
@@ -228,26 +230,29 @@ const Follower = forwardRef(({ onDataUpdate, otherUserId, onDataChange }, ref) =
     }
 
     return (
-        <View style={styles.container}>
-            <FlatList
-                data={followersData}
-                keyExtractor={(item, index) => {
-                    const userId = item?.userId;
-                    return userId ? userId.toString() : `follower-${index}`;
-                }}
-                renderItem={renderItem}
-                contentContainerStyle={styles.listContainer}
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                showsVerticalScrollIndicator={false}
-                ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>팔로워가 없습니다.</Text>
-                        <Text style={styles.emptySubText}>새로운 팔로워가 생기면 여기에 표시됩니다.</Text>
-                    </View>
-                }
-            />
-        </View>
+        <SafeScreen>
+            <StatusBar style="dark" translucent={true} />
+            <View style={styles.container}>
+                <FlatList
+                    data={followersData}
+                    keyExtractor={(item, index) => {
+                        const userId = item?.userId;
+                        return userId ? userId.toString() : `follower-${index}`;
+                    }}
+                    renderItem={renderItem}
+                    contentContainerStyle={styles.listContainer}
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
+                    showsVerticalScrollIndicator={false}
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <Text style={styles.emptyText}>팔로워가 없습니다.</Text>
+                            <Text style={styles.emptySubText}>새로운 팔로워가 생기면 여기에 표시됩니다.</Text>
+                        </View>
+                    }
+                />
+            </View>
+        </SafeScreen>
     );
 });
 

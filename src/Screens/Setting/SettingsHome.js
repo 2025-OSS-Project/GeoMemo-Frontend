@@ -11,7 +11,9 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StatusBar } from 'expo-status-bar';
 import { deleteAccount, getUserInfo } from '../../config/api';
+import SafeScreen from '../../utils/SafeScreen';
 
 const { width, height } = Dimensions.get('window');
 
@@ -170,9 +172,11 @@ export default function SettingsHome() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* 회원정보 수정 */}
-      <TouchableOpacity
+    <SafeScreen>
+      <StatusBar style="dark" translucent={true} />
+      <View style={styles.container}>
+        {/* 회원정보 수정 */}
+        <TouchableOpacity
         style={styles.boxButton}
         onPress={() => navigation.navigate('EditProfile')}
       >
@@ -223,7 +227,8 @@ export default function SettingsHome() {
       <TouchableOpacity style={styles.withdrawButton} onPress={handleDeleteAccount}>
         <Text style={styles.withdrawText}>회원탈퇴</Text>
       </TouchableOpacity>
-    </View>
+      </View>
+    </SafeScreen>
   );
 }
 

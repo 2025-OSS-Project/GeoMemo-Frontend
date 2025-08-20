@@ -135,6 +135,22 @@ export default function OtherMemoList({ userId }) {
             console.log('응답 헤더:', Object.fromEntries(response.headers.entries()));
             
             if (!response.ok) {
+                // 404 에러는 해당 사용자의 메모가 없다는 의미이므로 빈 배열 반환
+                if (response.status === 404) {
+                    console.log('📝 해당 사용자의 메모가 없습니다');
+                    setMemos([]);
+                    setIsLoading(false);
+                    return;
+                }
+                
+                // 204 No Content도 해당 사용자의 메모가 없다는 의미
+                if (response.status === 204) {
+                    console.log('📝 해당 사용자의 메모가 없습니다 (204 No Content)');
+                    setMemos([]);
+                    setIsLoading(false);
+                    return;
+                }
+                
                 let errorMessage = `HTTP error! status: ${response.status}`;
                 
                 try {
@@ -312,7 +328,9 @@ export default function OtherMemoList({ userId }) {
             <ScrollView contentContainerStyle={styles.memoList}>
                 {memos.length === 0 ? (
                     <View style={styles.emptyContainer}>
+                        <MaterialCommunityIcons name="note-text-outline" size={48} color="#ccc" style={{ marginBottom: 16 }} />
                         <Text style={styles.emptyText}>메모가 없습니다</Text>
+                        <Text style={styles.emptySubText}>아직 작성된 메모가 없어요</Text>
                     </View>
                 ) : (
                     memos.map((memo) => (
@@ -495,9 +513,16 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 40,
+        minHeight: 300,
     },
     emptyText: {
         fontSize: 18,
         color: '#666',
+        marginBottom: 8,
+    },
+    emptySubText: {
+        fontSize: 14,
+        color: '#999',
+        textAlign: 'center',
     },
 });

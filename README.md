@@ -20,10 +20,19 @@ GeoMemo는 사용자가 특정 위치에 메모를 남기고, 지도를 통해 �
 - 공개/비공개 메모 설정
 - 다른 사용자의 메모 스크랩
 
+### 인사이트 및 분석
+- 주간 감정 분포 분석
+- 육각형 레이더 차트를 통한 감정 시각화
+- 감정별 메모 통계 (기쁨, 놀람, 분노, 불안, 상처, 슬픔)
+- AI 기반 주간 인사이트 제공
+- 감정 데이터 기반 사용자 패턴 분석
+
 ### 사용자 인터페이스
 - 슬라이드 패널을 통한 직관적인 네비게이션
 - 애니메이션 효과가 적용된 UI
 - 반응형 디자인
+- **Safe Area 지원**: 노치, 상태바, 홈 인디케이터 등 시스템 UI와의 안전한 거리 확보
+- **Edge-to-Edge 모드**: Android 12+ (API 31+) 지원으로 현대적인 UI 경험 제공
 
 ## 기술 스택
 
@@ -40,6 +49,8 @@ GeoMemo는 사용자가 특정 위치에 메모를 남기고, 지도를 통해 �
 - **Expo Sensors** - 센서 데이터 (자기장계)
 - **Expo Image Picker** - 이미지 선택
 - **React Native AWS3** - S3 업로드
+- **react-native-safe-area-context** - Safe Area 관리
+- **expo-status-bar** - StatusBar 제어
 
 ### 개발 도구
 - **Metro** - 번들러
@@ -47,7 +58,7 @@ GeoMemo는 사용자가 특정 위치에 메모를 남기고, 지도를 통해 �
 
 ## 플랫폼 지원
 
-- **Android** - API 21+ 지원
+- **Android** - API 21+ 지원 (API 31+에서 Edge-to-Edge 모드 지원)
 - **Web** - React Native Web을 통한 웹 지원
 
 ## 시작하기
@@ -103,6 +114,25 @@ npm run web
 }
 ```
 
+### Safe Area 및 StatusBar 설정
+앱은 자동으로 Safe Area를 처리하며, Android의 Edge-to-Edge 모드를 지원합니다:
+
+```json
+{
+  "expo": {
+    "androidStatusBar": {
+      "translucent": true,
+      "backgroundColor": "transparent",
+      "barStyle": "dark-content"
+    },
+    "androidNavigationBar": {
+      "backgroundColor": "#FFFFFF",
+      "barStyle": "dark-content"
+    }
+  }
+}
+```
+
 ### 환경 변수
 `.env` 파일을 생성하여 필요한 환경 변수를 설정하세요:
 
@@ -128,6 +158,7 @@ GeoMemo-Frontend/
 │   │   ├── Profile/       # 프로필 및 사용자 관리
 │   │   └── Setting/       # 설정 화면
 │   └── utils/             # 유틸리티 함수
+│       └── SafeScreen.js  # Safe Area 관리 컴포넌트
 ├── App.js                  # 메인 앱 컴포넌트
 ├── app.json               # Expo 설정
 ├── eas.json               # EAS Build 설정
@@ -157,6 +188,47 @@ GeoMemo-Frontend/
 - **MyProfile.js** - 내 프로필
 - **OtherProfile.js** - 다른 사용자 프로필
 - **ScrapMemo.js** - 스크랩한 메모
+- **Insight.js** - 사용자 인사이트 및 감정 분석
+- **FollowRequest.js** - 팔로우 요청 관리
+- **UserSearch.js** - 사용자 검색
+- **MemoView.js** - 메모 상세 보기
+
+## Safe Area 및 StatusBar 관리
+
+### SafeScreen 컴포넌트
+모든 화면에서 일관된 Safe Area 처리를 위해 `SafeScreen` 컴포넌트를 사용합니다:
+
+```javascript
+import SafeScreen from '../../utils/SafeScreen';
+
+export default function MyScreen() {
+  return (
+    <SafeScreen>
+      <StatusBar style="dark" translucent={true} />
+      {/* 화면 내용 */}
+    </SafeScreen>
+  );
+}
+```
+
+### 주요 특징
+- **자동 Safe Area 처리**: 노치, 상태바, 홈 인디케이터와의 안전한 거리 자동 계산
+- **Edge-to-Edge 지원**: Android 12+에서 현대적인 UI 경험 제공
+- **일관된 StatusBar**: 모든 화면에서 동일한 StatusBar 스타일 적용
+- **반응형 레이아웃**: 다양한 디바이스 크기와 Safe Area에 자동 대응
+
+### 적용된 화면
+- ✅ Login.js
+- ✅ SignUp.js
+- ✅ Home.js
+- ✅ MemoManager.js
+- ✅ MyProfile.js
+- ✅ SettingsHome.js
+- ✅ FollowManage.js
+- ✅ FollowRequest.js
+- ✅ UserSearch.js
+- ✅ AddMemo.js
+- ✅ MemoView.js
 
 ## API 구조
 
@@ -169,7 +241,8 @@ GeoMemo-Frontend/
 ### 주요 API
 - `POST /api/memo/` - 메모 생성
 - `GET /api/memo/` - 메모 조회
-- `POST /api/map-bounds` - 지도 경계 전송
+- `POST /api/memo/all` - 지도 경계 전송
+- `GET /api/mq/insights/{userId}` - 사용자 인사이트 조회
 
 ## 개발 가이드
 
@@ -188,6 +261,11 @@ GeoMemo-Frontend/
 - React Navigation 7.x 사용
 - 스택 네비게이션과 탭 네비게이션 조합
 - 화면 간 데이터 전달 시 route.params 활용
+
+### Safe Area 처리
+- 모든 화면에서 `SafeScreen` 컴포넌트 사용
+- `expo-status-bar`의 `StatusBar` 컴포넌트 활용
+- `translucent={true}` 설정으로 Edge-to-Edge 모드 지원
 
 ### 에러 처리
 - try-catch 구문을 통한 적절한 에러 핸들링
@@ -219,6 +297,10 @@ npm run web
 - 메모 작성 및 저장
 - 사용자 인증 플로우
 - 이미지 업로드 기능
+- 인사이트 데이터 로딩 및 차트 표시
+- 감정 분석 데이터 시각화
+- **Safe Area 처리**: 노치, 상태바 영역에서 UI가 잘리지 않는지 확인
+- **Edge-to-Edge 모드**: Android 12+ 디바이스에서 현대적인 UI 경험 확인
 
 ## 트러블슈팅
 
@@ -249,11 +331,19 @@ npm install
 - Android Manifest에서 권한 확인
 - 런타임 권한 요청 코드 확인
 
+**Safe Area 관련 문제**
+```bash
+# Safe Area 관련 라이브러리 재설치
+npm install react-native-safe-area-context
+npx expo install expo-status-bar
+```
+
 ### 디버깅 팁
 - React Native Debugger 사용
 - console.log를 통한 로깅
 - Expo DevTools 활용
 - Chrome DevTools로 웹 디버깅
+- **Safe Area Inspector**: Expo DevTools에서 Safe Area 영역 시각화
 
 ## 배포
 
@@ -265,6 +355,48 @@ eas build --platform android
 
 ### 앱 스토어 배포
 - Google Play Store
+
+## 인사이트 기능 상세 설명
+
+### 감정 분석 시스템
+GeoMemo는 사용자가 작성한 메모의 감정을 분석하여 주간 인사이트를 제공합니다.
+
+#### 감정 분류
+- **기쁨** - 긍정적이고 즐거운 감정
+- **놀람** - 예상치 못한 상황에 대한 반응
+- **분노** - 화나거나 짜증나는 감정
+- **불안** - 걱정이나 긴장감
+- **상처** - 마음에 상처를 받은 감정
+- **슬픔** - 우울하거나 슬픈 감정
+
+#### 시각화 기능
+- **육각형 레이더 차트**: 6가지 감정을 육각형 형태로 표시
+- **감정별 통계**: 각 감정의 발생 빈도를 숫자로 표시
+- **그리드 시스템**: 배경 육각형 그리드를 통한 직관적인 비교
+- **반응형 디자인**: 다양한 화면 크기에 최적화된 차트
+
+#### 데이터 처리
+- **실시간 업데이트**: 화면 포커스 시 자동 데이터 새로고침
+- **풀-투-리프레시**: 사용자 수동 새로고침 지원
+- **에러 핸들링**: 네트워크 오류 및 데이터 부재 상황 처리
+- **로딩 상태**: 데이터 로딩 중 사용자 피드백 제공
+
+### 기술적 특징
+- **React Native 최적화**: 네이티브 성능을 활용한 부드러운 애니메이션
+- **SVG 기반 차트**: 정확한 기하학적 계산을 통한 차트 렌더링
+- **메모리 효율성**: useCallback과 useFocusEffect를 통한 최적화
+- **접근성**: 색맹 사용자를 고려한 색상 대비 및 텍스트 라벨
+
+## 최근 업데이트
+
+### Safe Area 및 StatusBar 개선 (2024)
+- **SafeScreen 컴포넌트 도입**: 모든 화면에서 일관된 Safe Area 처리
+- **Edge-to-Edge 모드 지원**: Android 12+ (API 31+)에서 현대적인 UI 경험
+- **StatusBar 통합 관리**: `expo-status-bar`를 통한 일관된 StatusBar 스타일
+- **반응형 레이아웃**: 다양한 디바이스의 Safe Area에 자동 대응
+
+### 적용된 화면
+모든 주요 화면에 SafeScreen 컴포넌트가 적용되어 노치, 상태바, 홈 인디케이터와의 안전한 거리를 자동으로 확보합니다.
 
 ## 문의
 

@@ -81,11 +81,21 @@ export default function ScrapMemo() {
         // isPublic이 true인 메모만 필터링
         const publicMemos = result.data.filter(memo => memo.isPublic === true);
         setScrapMemos(publicMemos);
+      } else if (result.success && result.data && result.data.length === 0) {
+        // 스크랩 메모가 없는 경우 (에러가 아님)
+        setScrapMemos([]);
+        setError(null);
       } else {
         setError('스크랩 메모 목록을 가져올 수 없습니다.');
       }
     } catch (error) {
-      setError(`스크랩 메모 목록 조회 실패: ${error.message}`);
+      // 스크랩 메모가 없는 경우는 에러로 처리하지 않음
+      if (error.message.includes('스크랩한 메모가 없습니다')) {
+        setScrapMemos([]);
+        setError(null);
+      } else {
+        setError(`스크랩 메모 목록 조회 실패: ${error.message}`);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -141,7 +151,9 @@ export default function ScrapMemo() {
       <ScrollView contentContainerStyle={styles.memoList}>
         {scrapMemos.length === 0 ? (
           <View style={styles.emptyContainer}>
+            <MaterialCommunityIcons name="bookmark-outline" size={48} color="#ccc" style={{ marginBottom: 16 }} />
             <Text style={styles.emptyText}>스크랩한 메모가 없습니다</Text>
+            <Text style={styles.emptySubText}>관심 있는 메모를 스크랩해보세요!</Text>
           </View>
         ) : (
           scrapMemos.map((memo) => (
@@ -298,9 +310,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
+    minHeight: 300,
   },
   emptyText: {
     fontSize: 18,
     color: '#666',
+    marginBottom: 8,
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
   },
 });
