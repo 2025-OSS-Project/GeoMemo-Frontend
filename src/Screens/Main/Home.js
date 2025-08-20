@@ -217,21 +217,34 @@ function Home() {
       // userId는 임시로 1로 설정 (실제로는 사용자 정보에서 가져와야 함)
       const result = await getRecommendations(1, userToken);
       
-      if (result.success && result.data) {
-        setRecommendations(result);
-        console.log('✅ 추천 장소 목록 가져오기 완료:', result);
-      } else if (result.success && result.data && result.data.length === 0) {
-        // 추천 장소가 없는 경우 (에러가 아님)
-        setRecommendations({ items: [] });
-        console.log('📝 추천 장소가 없습니다');
+      console.log('📊 추천 장소 API 응답:', result);
+      
+      // 모든 가능한 데이터 구조를 확인하여 추천 장소 설정
+      if (result.items && Array.isArray(result.items)) {
+        // { items: [...] } 구조
+        setRecommendations({ items: result.items });
+        console.log('✅ 추천 장소 목록 가져오기 완료 (items):', result.items);
+      } else if (result.data && Array.isArray(result.data)) {
+        // { data: [...] } 구조
+        setRecommendations({ items: result.data });
+        console.log('✅ 추천 장소 목록 가져오기 완료 (data):', result.data);
+      } else if (result.data && result.data.items && Array.isArray(result.data.items)) {
+        // { data: { items: [...] } } 구조
+        setRecommendations({ items: result.data.items });
+        console.log('✅ 추천 장소 목록 가져오기 완료 (data.items):', result.data.items);
+      } else if (result && Array.isArray(result)) {
+        // result 자체가 배열인 경우
+        setRecommendations({ items: result });
+        console.log('✅ 추천 장소 목록 가져오기 완료 (result):', result);
       } else {
-        setRecommendations(null);
-        console.log('❌ 추천 장소 목록을 가져올 수 없습니다');
+        // 데이터가 없거나 예상과 다른 구조인 경우
+        console.log('📝 추천 장소 데이터 구조 확인:', result);
+        setRecommendations({ items: [] });
       }
       
     } catch (error) {
       console.error('❌ 추천 장소 목록 가져오기 실패:', error.message);
-      setRecommendations(null);
+      setRecommendations({ items: [] });
     } finally {
       setIsLoadingRecommendations(false);
     }
