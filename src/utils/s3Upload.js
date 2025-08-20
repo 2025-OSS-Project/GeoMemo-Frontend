@@ -53,7 +53,7 @@ export const uploadWithPresigned = async (uploadUrl, fileUri, mime, onProgress) 
     if (onProgress) onProgress(100);
     
   } catch (error) {
-    console.error('❌ Presigned 업로드 실패:', error);
+    // console.error('❌ Presigned 업로드 실패:', error);
     throw error;
   }
 };
@@ -124,7 +124,7 @@ export const validateImage = async (imageUri) => {
     return true;
     
   } catch (error) {
-    console.error('이미지 검증 실패:', error);
+    // console.error('이미지 검증 실패:', error);
     throw error;
   }
 };

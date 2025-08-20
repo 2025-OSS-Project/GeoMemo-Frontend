@@ -106,10 +106,9 @@ export default function Login() {
                 await AsyncStorage.removeItem('userToken');
               }
             }
-          } catch (error) {
-            console.error('토큰 저장 실패:', error.message);
-            Alert.alert('경고', '토큰 저장에 실패했습니다. 앱을 다시 시작해주세요.');
-          }
+                      } catch (error) {
+              Alert.alert('경고', '토큰 저장에 실패했습니다. 앱을 다시 시작해주세요.');
+            }
         }, 500); // 500ms 후 백그라운드에서 처리
         
         const totalLoginTime = performance.now() - loginStartTime;
@@ -118,14 +117,8 @@ export default function Login() {
         Alert.alert('오류', '로그인에 실패했습니다.');
       }
       
-    } catch (error) {
-      // 로그인 실패 시 상세한 콘솔 출력 제거
-      // 개발 환경에서만 간단한 에러 정보 출력
-      if (__DEV__) {
-        console.log('로그인 실패:', error.message);
-      }
-      
-      // API에서 이미 사용자 친화적인 메시지를 제공하므로 직접 사용
+         } catch (error) {
+       // API에서 이미 사용자 친화적인 메시지를 제공하므로 직접 사용
       let errorMessage = error.message || '로그인에 실패했습니다.';
       
       // 특별한 에러 타입 처리

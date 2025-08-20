@@ -3,7 +3,8 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert,
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { signUp, sendEmailVerification, USER_ERROR_CODES, USER_ERROR_MESSAGES } from '../../config/api';
+import { signUp, sendEmailVerification } from '../../config/api';
+import { ERROR_MESSAGES } from '../../utils/errorHandler';
 import SafeScreen from '../../utils/SafeScreen';
 
 export default function SignUp() {
@@ -36,11 +37,17 @@ export default function SignUp() {
 
   const validatePassword = (password) => {
     if (!password) return { isValid: false, message: '' };
-    if (password.length < 6) {
-      return { isValid: false, message: '비밀번호는 6자 이상이어야 합니다' };
+    if (password.length < 8) {
+      return { isValid: false, message: '비밀번호는 8자 이상이어야 합니다' };
     }
     if (password.length > 50) {
       return { isValid: false, message: '비밀번호는 50자 이하여야 합니다' };
+    }
+    // 문자와 숫자가 모두 포함되어야 함
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    if (!hasLetter || !hasNumber) {
+      return { isValid: false, message: '비밀번호는 문자와 숫자를 모두 포함해야 합니다' };
     }
     return { isValid: true, message: '' };
   };
@@ -172,10 +179,8 @@ export default function SignUp() {
               }
             ]
           );
-        } catch (error) {
-          console.error('이메일 인증 코드 발송 에러:', error);
-          
-          let errorMessage = error.message || '이메일 인증 코드 발송에 실패했습니다.';
+                 } catch (error) {
+           let errorMessage = error.message || '이메일 인증 코드 발송에 실패했습니다.';
           
           // 특별한 에러 타입에 대한 추가 처리
           if (error.status === 400) {
@@ -249,85 +254,24 @@ export default function SignUp() {
         Alert.alert('오류', '회원가입에 실패했습니다.');
       }
       
-    } catch (error) {
-      console.error('회원가입 에러:', error);
-      console.error('에러 상태 코드:', error.status);
-      console.error('에러 코드:', error.errorCode);
-      console.error('에러 상세:', error.detail);
-      console.error('에러 메시지:', error.message);
-      
-      let errorMessage = error.message || '회원가입에 실패했습니다.';
-      let errorCode = error.errorCode;
-      
-      // 이미지의 오류 코드 테이블에 따른 구체적인 에러 메시지 처리
-      if (errorCode) {
-        console.log('오류 코드로 처리:', errorCode);
-        switch (errorCode) {
-          case USER_ERROR_CODES.USR_001:
-            errorMessage = '필수 입력값이 누락되었습니다 (사용자명, 비밀번호 등)';
-            break;
-          case USER_ERROR_CODES.USR_002:
-            errorMessage = '유효하지 않은 이메일 형식입니다';
-            break;
-          case USER_ERROR_CODES.USR_003:
-            errorMessage = '비밀번호 형식이 올바르지 않습니다 (너무 짧거나 조건 미달)';
-            break;
-          case USER_ERROR_CODES.USR_004:
-            errorMessage = '이미 존재하는 사용자명입니다 (중복 아이디)';
-            break;
-          case USER_ERROR_CODES.USR_005:
-            errorMessage = '이미 사용 중인 이메일입니다';
-            break;
-          case USER_ERROR_CODES.USR_006:
-            errorMessage = '닉네임 길이가 제한을 초과했습니다';
-            break;
-          case USER_ERROR_CODES.USR_007:
-            errorMessage = '전화번호 형식이 올바르지 않습니다';
-            break;
-          case USER_ERROR_CODES.USR_999:
-            errorMessage = '서버 내부 오류가 발생했습니다 (DB 문제 등)';
-            break;
-          default:
-            errorMessage = error.message || '회원가입에 실패했습니다';
-        }
-      } else {
-        console.log('오류 코드 없음, HTTP 상태 코드로 처리:', error.status);
-        // 오류 코드가 없는 경우 HTTP 상태 코드별 처리
-        if (error.status === 400) {
-          // 잘못된 요청 데이터
-          const detail = error.detail || '';
-          if (detail.includes('email') || detail.includes('이메일')) {
-            errorMessage = '유효하지 않은 이메일 형식입니다';
-          } else if (detail.includes('nickname') || detail.includes('닉네임')) {
-            errorMessage = '닉네임 길이가 제한을 초과했습니다';
-          } else if (detail.includes('phone') || detail.includes('전화번호')) {
-            errorMessage = '전화번호 형식이 올바르지 않습니다';
-          } else if (detail.includes('password') || detail.includes('비밀번호')) {
-            errorMessage = '비밀번호 형식이 올바르지 않습니다';
-          } else {
-            errorMessage = '입력 정보를 확인해주세요';
-          }
-        } else if (error.status === 409) {
-          // 충돌 (중복된 데이터)
-          const detail = error.detail || '';
-          if (detail.includes('email') || detail.includes('이메일')) {
-            errorMessage = '이미 사용 중인 이메일입니다';
-          } else if (detail.includes('nickname') || detail.includes('닉네임')) {
-            errorMessage = '이미 사용 중인 닉네임입니다';
-          } else if (detail.includes('phone') || detail.includes('전화번호')) {
-            errorMessage = '이미 사용 중인 전화번호입니다';
-          } else {
-            errorMessage = '이미 존재하는 계정입니다';
-          }
-        } else if (error.status === 422) {
-          errorMessage = '입력 정보가 올바르지 않습니다';
-        } else if (error.status >= 500) {
-          errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요';
-        }
-      }
-      
-      console.log('최종 에러 메시지:', errorMessage);
-      Alert.alert('회원가입 실패', errorMessage);
+         } catch (error) {
+       let errorMessage = error.message || '회원가입에 실패했습니다.';
+       let errorCode = error.errorCode;
+       
+       // 이미지의 오류 코드 테이블에 따른 구체적인 에러 메시지 처리
+       if (errorCode) {
+         // ERROR_MESSAGES에서 해당 에러 코드의 메시지 가져오기
+         if (ERROR_MESSAGES[errorCode]) {
+           errorMessage = ERROR_MESSAGES[errorCode];
+         } else {
+           errorMessage = error.message || '회원가입에 실패했습니다';
+         }
+       } else {
+         // errorHandler.js에서 이미 처리된 메시지 사용
+         errorMessage = error.message;
+       }
+       
+       Alert.alert('회원가입 실패', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -368,7 +312,7 @@ export default function SignUp() {
           <View style={[styles.passwordContainer, passwordError ? styles.inputError : null]}>
             <TextInput 
               style={styles.passwordInput} 
-              placeholder="비밀번호 (6자 이상)" 
+              placeholder="비밀번호 (8자 이상, 문자+숫자)" 
               placeholderTextColor="#999"
               secureTextEntry={!showPassword}
               value={password}
