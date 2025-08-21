@@ -179,73 +179,62 @@ export default function Login() {
     <SafeScreen>
       <StatusBar style="dark" translucent={true} />
       <View style={styles.container}>
-        <Text style={styles.title}>GeoMemo</Text>
-
-        <Text style={styles.label}>E-mail</Text>
-        <TextInput
-          placeholder="email@email.com"
-          placeholderTextColor="#999"
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          returnKeyType="next"
-          editable={!isLoading}
-        />
-
-        <Text style={styles.label}>비밀번호</Text>
-        <TextInput
-          placeholder="비밀번호"
-          placeholderTextColor="#999"
-          style={styles.input}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          returnKeyType="done"
-          onSubmitEditing={handleLogin}
-          editable={!isLoading}
-        />
-
-        <TouchableOpacity 
-          style={[styles.loginButton, isLoading && styles.disabledButton]} 
-          onPress={handleLogin}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="white" />
-              <Text style={styles.loginButtonText}>로그인 중...</Text>
-            </View>
-          ) : (
-            <Text style={styles.loginButtonText}>로그인</Text>
-          )}
-        </TouchableOpacity>
-
-        <View style={styles.dividerContainer}>
-          <View style={styles.line} />
-          <Text style={styles.or}>또는</Text>
-          <View style={styles.line} />
+        <View style={styles.headerSection}>
+          <Text style={styles.title}>GeoMemo</Text>
+          <Text style={styles.subtitle}>지역 기반 메모 서비스</Text>
         </View>
 
-        <TouchableOpacity style={[styles.socialButton, styles.googleButton]} disabled={isLoading}>
-          <Text style={styles.socialText}>Google로 로그인</Text>
-        </TouchableOpacity>
+        <View style={styles.formSection}>
+          <Text style={styles.label}>E-mail</Text>
+          <TextInput
+            placeholder="email@email.com"
+            placeholderTextColor="#999"
+            style={styles.input}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            returnKeyType="next"
+            editable={!isLoading}
+          />
 
-        <TouchableOpacity style={[styles.socialButton, styles.naverButton]} disabled={isLoading}>
-          <Text style={styles.socialText}>Naver로 로그인</Text>
-        </TouchableOpacity>
+          <Text style={styles.label}>비밀번호</Text>
+          <TextInput
+            placeholder="비밀번호"
+            placeholderTextColor="#999"
+            style={styles.input}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            returnKeyType="done"
+            onSubmitEditing={handleLogin}
+            editable={!isLoading}
+          />
 
-        <TouchableOpacity style={[styles.socialButton, styles.kakaoButton]} disabled={isLoading}>
-          <Text style={styles.socialText}>Kakao로 로그인</Text>
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.loginButton, isLoading && styles.disabledButton]} 
+            onPress={handleLogin}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="white" />
+                <Text style={styles.loginButtonText}>로그인 중...</Text>
+              </View>
+            ) : (
+              <Text style={styles.loginButtonText}>로그인</Text>
+            )}
+          </TouchableOpacity>
+        </View>
 
-        <Text style={styles.bottomText}>
-          계정이 없으신가요?{' '}
-          <Text style={styles.linkText} onPress={() => navigation.navigate('SignUp')}>
-            가입하기
+        <View style={styles.footerSection}>
+          <Text style={styles.bottomText}>
+            계정이 없으신가요?{' '}
+            <Text style={styles.linkText} onPress={() => navigation.navigate('SignUp')}>
+              가입하기
+            </Text>
           </Text>
-        </Text>
+        </View>
       </View>
     </SafeScreen>
   );
@@ -259,12 +248,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingTop: 0, // SafeScreen에서 이미 top safe area를 처리하므로 제거
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    alignSelf: 'center',
-    marginTop: 0, // SafeScreen에서 이미 top safe area를 처리하므로 0으로 설정
+  headerSection: {
+    alignItems: 'center',
     marginBottom: 40,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '800',
+    alignSelf: 'center',
+    marginTop: 0,
+    marginBottom: 10,
+    color: '#1a1a1a',
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#8e8e93',
+    textAlign: 'center',
+    fontWeight: '400',
+  },
+  formSection: {
+    marginBottom: 24,
   },
   label: {
     marginBottom: 4,
@@ -274,23 +278,42 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    borderColor: '#e0e0e0',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
     fontSize: 16,
     fontWeight: '500',
     color: '#000',
+    backgroundColor: '#fafafa',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 3.84,
+    elevation: 2,
   },
   loginButton: {
     backgroundColor: '#111',
     padding: 14,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
   },
   disabledButton: {
     backgroundColor: '#ccc',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   loginButtonText: {
     color: 'white',
@@ -301,46 +324,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  line: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#aaa',
-  },
-  or: {
-    marginHorizontal: 8,
-    color: '#666',
-  },
-  socialButton: {
-    padding: 12,
-    borderRadius: 6,
-    marginBottom: 10,
-    alignItems: 'center',
-  },
-  socialText: {
-    color: '#333',
-    fontWeight: 'bold',
+  footerSection: {
+    marginTop: 30,
   },
   bottomText: {
-    marginTop: 50,
     textAlign: 'left',
     color: '#333',
   },
   linkText: {
     color: '#3366ff',
     fontWeight: 'bold',
-  },
-  googleButton: {
-    backgroundColor: '#e2e1e1ff',
-  },
-  naverButton: {
-    backgroundColor: '#03C75A',
-  },
-  kakaoButton: {
-    backgroundColor: '#FEE500',
   },
 });
