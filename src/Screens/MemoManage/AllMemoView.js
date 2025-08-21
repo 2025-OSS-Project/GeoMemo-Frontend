@@ -13,7 +13,7 @@ import {
   Platform
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { Entypo, AntDesign } from '@expo/vector-icons';
+import { Entypo } from '@expo/vector-icons';
 import { deleteMemo, updateMemo, getMemoById } from '../../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -278,12 +278,6 @@ export default function AllMemoView() {
                 ) : (
                   <Entypo name="eye-with-line" size={24} color="black" />
                 )}
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity>
-              <View style={styles.footerBtn}>
-                <AntDesign name="link" size={24} color="black" />
               </View>
             </TouchableOpacity>
 

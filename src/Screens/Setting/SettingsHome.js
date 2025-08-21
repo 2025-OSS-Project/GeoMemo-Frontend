@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Switch,
   Dimensions,
   Alert,
 } from 'react-native';
@@ -19,7 +18,6 @@ const { width, height } = Dimensions.get('window');
 
 export default function SettingsHome() {
   const navigation = useNavigation();
-  const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
   const [currentPrivacySetting, setCurrentPrivacySetting] = useState('open');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -198,23 +196,6 @@ export default function SettingsHome() {
         </View>
       </TouchableOpacity>
 
-      {/* 알림기능 */}
-      <View style={styles.toggleBox}>
-        <View style={styles.toggleRow}>
-          <Text style={styles.boxText}>알림기능</Text>
-          <Switch
-            value={isNotificationEnabled}
-            onValueChange={() =>
-              setIsNotificationEnabled(!isNotificationEnabled)
-            }
-            trackColor={{ false: '#ccc', true: '#4cd137' }}
-          />
-        </View>
-        <Text style={styles.subText}>
-          주간 인사이트 및 장소추천을 알림으로 받을 수 있어요.
-        </Text>
-      </View>
-
       {/* Spacer */}
       <View style={{ flex: 1 }} />
 
@@ -246,18 +227,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 20,
     marginBottom: 16,
-  },
-  toggleBox: {
-    width: '100%',
-    backgroundColor: '#F2F2F2',
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   settingRow: {
     flexDirection: 'row',

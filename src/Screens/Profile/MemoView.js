@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, Linking } from 'react-native';
-import { Ionicons, FontAwesome, AntDesign } from '@expo/vector-icons';
+import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { getMemoById, scrapMemo, unscrapMemo, getCurrentUserInfo, checkIsScraped, generatePresignedGetUrl } from '../../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -565,12 +565,6 @@ export default function MemoView({ navigation, route }) {
 
           {/* 하단 버튼들 */}
           <View style={styles.footer}>
-            <TouchableOpacity>
-              <View style={styles.footerBtn}>
-                <AntDesign name="link" size={24} color="black" />
-              </View>
-            </TouchableOpacity>
-
             <View style={styles.footerSpacer} />
 
             {memo.location?.address ? (
